@@ -82,7 +82,7 @@ function deliver(kind, message, method, settings, device, app) {
   }
   // Prefix alerts with red sirens and back-to-normal messages with green lights
   const emoji = kind === 'clear' ? '🟢 ' : '🚨 ';
-  const text = `${bell}${emoji}${message}${emoji}`;
+  const text = `${bell}${emoji}${message} ${emoji}`;
 
   // Broadcast the alert on the configured channel (channel 0 is the public
   // primary channel)
