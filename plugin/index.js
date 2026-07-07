@@ -1,7 +1,6 @@
 const { readFile, writeFile } = require('fs/promises');
 const { join } = require('path');
 
-const Telemetry = require('./telemetry');
 const commands = require('./commands/index');
 const { sendMOB } = require('./waypoint');
 const { sendNotification, sendReminders } = require('./notifications');
@@ -226,8 +225,6 @@ module.exports = (app) => {
     meshtastic: [],
   };
   const nodes = {};
-  const telemetry = new Telemetry();
-  let publishInterval;
   let reminderInterval;
   plugin.id = 'signalk-meshtastic';
   plugin.name = 'Meshtastic';
@@ -290,38 +287,6 @@ module.exports = (app) => {
     }
 
     const nodeDbFile = join(app.getDataDirPath(), 'node-db.json');
-
-    publishInterval = setInterval(() => {
-      if (!device) {
-        // Not connected to Meshtastic yet
-        return;
-      }
-      if (!settings.communications || !settings.communications.send_environment_metrics) {
-        // Metrics sending disabled
-        return;
-      }
-      const values = telemetry.toMeshtastic();
-      if (Object.keys(values).length === 0) {
-        // No telemetry to send
-        return;
-      }
-      const telemetryMessage = create(Protobuf.Telemetry.TelemetrySchema, {
-        time: Math.floor(new Date().getTime() / 1000),
-        variant: {
-          case: 'environmentMetrics',
-          value: create(Protobuf.Telemetry.EnvironmentMetricsSchema, values),
-        },
-      });
-      device.sendPacket(
-        toBinary(Protobuf.Telemetry.TelemetrySchema, telemetryMessage),
-        Protobuf.Portnums.PortNum.TELEMETRY_APP,
-        'broadcast',
-        0,
-        true,
-        false,
-      )
-        .catch((e) => app.error(`Failed to send telemetry: ${e.message}`));
-    }, 60000 * 4);
 
     // Re-send alarms that have stayed active longer than the reminder interval
     reminderInterval = setInterval(() => {
@@ -835,42 +800,6 @@ module.exports = (app) => {
                 path: 'notifications.*',
                 policy: 'instant',
               },
-              {
-                path: 'environment.outside.temperature',
-                period: 1000,
-              },
-              {
-                path: 'environment.outside.relativeHumidity',
-                period: 1000,
-              },
-              {
-                path: 'environment.outside.pressure',
-                period: 1000,
-              },
-              {
-                path: 'environment.wind.directionTrue',
-                period: 1000,
-              },
-              {
-                path: 'environment.wind.speedOverGround',
-                period: 1000,
-              },
-              {
-                path: 'electrical.batteries.house.voltage',
-                period: 1000,
-              },
-              {
-                path: 'electrical.batteries.house.current',
-                period: 1000,
-              },
-              {
-                path: 'navigation.anchor.distanceFromBow',
-                period: 1000,
-              },
-              {
-                path: 'environment.depth.belowSurface',
-                period: 1000,
-              },
             ],
           },
           unsubscribes.signalk,
@@ -910,14 +839,7 @@ module.exports = (app) => {
                     // This is a notification about a MOB beacon, create waypoint
                     sendMOB(v.path, v.value, app, device, create, Protobuf);
                   }
-                  return;
                 }
-                if (v.path === 'environment.wind.speedOverGround') {
-                  telemetry.updateWindSpeed(v.value);
-                  return;
-                }
-                // The others go to the telemetry object
-                telemetry.update(v.path, v.value);
               });
             });
           },
@@ -941,9 +863,6 @@ module.exports = (app) => {
       });
   };
   plugin.stop = () => {
-    if (publishInterval) {
-      clearInterval(publishInterval);
-    }
     if (reminderInterval) {
       clearInterval(reminderInterval);
     }
@@ -1069,11 +988,6 @@ module.exports = (app) => {
               title: 'Update Meshtastic node position from Signal K vessel position',
               default: true,
             },
-            send_alerts: {
-              type: 'boolean',
-              title: 'Send Signal K alerts as Meshtastic messages',
-              default: true,
-            },
             channel: {
               type: 'integer',
               title: 'Meshtastic channel index for alerts and commands (0-7, where 0 is the public primary channel)',
@@ -1085,11 +999,6 @@ module.exports = (app) => {
               type: 'string',
               title: 'Battery instance id used for the "Boat info" command reply (e.g. "house" or "0")',
               default: 'house',
-            },
-            send_environment_metrics: {
-              type: 'boolean',
-              title: 'Send environment metrics (wind, temperature, etc) to Meshtastic',
-              default: false,
             },
             digital_switching: {
               type: 'boolean',

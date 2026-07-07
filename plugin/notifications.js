@@ -13,10 +13,6 @@ const reminderMs = 5 * 60 * 1000;
 function evaluateNotification(path, value, episodes, settings, now) {
   const currentTime = now || new Date();
 
-  if (!settings.communications || !settings.communications.send_alerts) {
-    return { kind: null };
-  }
-
   const statesToSend = [
     'alarm',
     'emergency',
@@ -78,13 +74,15 @@ function shouldWeSendNotification(path, value, episodes, settings, now) {
   return evaluateNotification(path, value, episodes, settings, now).kind === 'alert';
 }
 
-function deliver(message, method, settings, device, app) {
+function deliver(kind, message, method, settings, device, app) {
   let bell = '';
-  if (method && method.indexOf('sound') !== -1) {
+  if (kind === 'alert' && method && method.indexOf('sound') !== -1) {
     // Trigger audible bell on receiving Meshtastic devices
     bell = '\u0007 ';
   }
-  const text = `${bell}${message}`;
+  // Prefix alerts with red sirens and back-to-normal messages with green lights
+  const emoji = kind === 'clear' ? '🟢 ' : '🚨 ';
+  const text = `${bell}${emoji}${message}${emoji}`;
 
   // Broadcast the alert on the configured channel (channel 0 is the public
   // primary channel)
@@ -110,7 +108,7 @@ function sendNotification(path, value, episodes, settings, device, app) {
 
   // Only alerts carry the audible bell; clears are informational
   const method = action.kind === 'alert' && value ? value.method : null;
-  return deliver(action.message, method, settings, device, app);
+  return deliver(action.kind, action.message, method, settings, device, app);
 }
 
 // Sends reminder notifications for alarms that have stayed active too long.
@@ -119,12 +117,9 @@ function sendReminders(episodes, settings, device, app, now) {
   if (!device) {
     return Promise.resolve();
   }
-  if (!settings.communications || !settings.communications.send_alerts) {
-    return Promise.resolve();
-  }
   const due = dueReminders(episodes, now);
   return due.reduce(
-    (prev, item) => prev.then(() => deliver(item.message, item.method, settings, device, app)),
+    (prev, item) => prev.then(() => deliver('alert', item.message, item.method, settings, device, app)),
     Promise.resolve(),
   );
 }

@@ -40,7 +40,6 @@ In production use on several boats.
  * Share Meshtastic waypoints for AIS targets (_"Waypoint DH8613"_)
  * Control digital switching (_"Turn decklight on"_). Opt-in.
  * Query live vessel status (_"Boat info"_)
-* Share weather station data from Signal K (wind, temperature, etc) over Meshtastic. Opt-in.
 * Show position-sharing Meshtastic nodes as vessels in Freeboard etc. Opt-in.
   * Associate Meshtastic nodes with other (AIS) vessels based on the `Some node name DE <callsign>` pattern
 
@@ -72,24 +71,6 @@ LoRa is line-of-sight communications quite similarly to VHF. Communications rang
 * Configure the plugin: set the Meshtastic channel to use for alerts and commands, and optionally set roles for onboard equipment and the dinghy tracker Meshtastic devices
 
 ![](https://github.com/meri-imperiumi/signalk-meshtastic/raw/main/doc/config-crew-role.png)
-
-## Telemetry sent to Meshtastic
-
-If enabled, your "boat node" will transmit the following telemetry to Meshtastic. This enables tracking various important metrics about your boat also remotely. They are visible in the device details in your Meshtastic app:
-
-![](https://github.com/meri-imperiumi/signalk-meshtastic/raw/main/doc/telemetry.png)
-
-Metrics used:
-
-* Temperature (from `environment.outside.temperature`)
-* Relative humidity (from `environment.outside.relativeHumidity`)
-* Barometric pressure (from `environment.outside.pressure`)
-* Wind direction (from `environment.wind.directionTrue`)
-* Wind speed (median of last ten minutes from `environment.wind.speedOverGround`)
-* Battery voltage (from `electrical.batteries.house.voltage`)
-* Battery current (from `electrical.batteries.house.current`)
-* If anchored, distance to anchor (from `navigation.anchor.distanceFromBow`)
-* If not anchored, distance is water depth (from `environment.depth.belowSurface`)
 
 ## Changes
 
