@@ -23,7 +23,7 @@ let Protobuf;
 // Keep a map of ongoing notification episodes
 const episodes = new Map();
 
-function getNodeContext(app, node, nodeNum, settings) {
+function getNodeContext(app, node, nodeNum) {
   if (node.thisNode) {
     return 'vessels.self';
   }
@@ -61,17 +61,11 @@ function getNodeContext(app, node, nodeNum, settings) {
   if (!nodeNum) {
     return null;
   }
-  if (settings && settings.communications && settings.communications.populate_vessels) {
-    // 98 MMSI prefix is for craft associated with a parent ship
-    // TODO: Add MID (country code of parent ship
-    return `vessels.urn:mrn:imo:mmsi:98${nodeNum}`;
-  }
-  // Make vessels/other targets for non-boat nodes
   return `meshtastic.urn:meshtastic:node:${nodeNum}`;
 }
 
-function nodeToSignalK(app, node, nodeInfo, settings) {
-  const context = getNodeContext(app, node, nodeInfo.num, settings);
+function nodeToSignalK(app, node, nodeInfo) {
+  const context = getNodeContext(app, node, nodeInfo.num);
   if (!context || (context === 'vessels.self' && !node.thisNode)) {
     return undefined;
   }
@@ -159,25 +153,13 @@ function nodeToSignalK(app, node, nodeInfo, settings) {
     value: role,
   });
 
-  if (context.indexOf('meshtastic.urn') === 0
-    || (context.indexOf('vessels.urn') === 0
-      && context.indexOf(':98') !== -1)) {
-    // This is a purely Meshtastic node so we inject additional data to "vesselify" it
+  if (context.indexOf('meshtastic.urn') === 0) {
     values.push({
       path: '',
       value: {
         name: nodeInfo.user.longName,
       },
     });
-    if (settings && settings.communications && settings.communications.populate_vessels) {
-      values.push({
-        path: '',
-        value: {
-          mmsi: context.split(':').at(-1),
-        },
-      });
-    }
-    // TODO: Type for dinghy, crew, etc
   }
 
   app.handleMessage('signalk-meshtastic', {
@@ -557,7 +539,7 @@ module.exports = (app) => {
             nodes[nodeInfo.num].seen = new Date(nodeInfo.lastHeard * 1000);
             if (nodes[nodeInfo.num].seen > Date.now() - (1000 * 60 * 60 * 24 * 2)) {
               // Node seen less than a two days ago, register with SK
-              const ctx = nodeToSignalK(app, nodes[nodeInfo.num], nodeInfo, settings);
+              const ctx = nodeToSignalK(app, nodes[nodeInfo.num], nodeInfo);
               if (ctx && ctx.indexOf('vessels.urn:mrn:imo:mmsi:') === 0) {
                 // We have an MMSI match, store it
                 nodes[nodeInfo.num].mmsi = ctx.split(':').at(-1);
@@ -617,7 +599,7 @@ module.exports = (app) => {
               }
             }
             setConnectionStatus();
-            const context = getNodeContext(app, nodes[packet.from], packet.from, settings);
+            const context = getNodeContext(app, nodes[packet.from], packet.from);
             if (!context) {
               // Not a vessel
               return;
@@ -715,7 +697,7 @@ module.exports = (app) => {
               }
             }
             setConnectionStatus();
-            const context = getNodeContext(app, nodes[position.from], position.from, settings);
+            const context = getNodeContext(app, nodes[position.from], position.from);
             if (!context) {
               // Not a vessel
               return;
@@ -811,9 +793,6 @@ module.exports = (app) => {
                   if (!Number.isFinite(v.value.latitude)
                     || !Number.isFinite(v.value.longitude)) {
                     // No position
-                    return;
-                  }
-                  if (!settings.communications || !settings.communications.send_position) {
                     return;
                   }
                   device.setFixedPosition(v.value.latitude, v.value.longitude)
@@ -918,11 +897,6 @@ module.exports = (app) => {
           type: 'object',
           title: 'Communications with Meshtastic',
           properties: {
-            send_position: {
-              type: 'boolean',
-              title: 'Update Meshtastic node position from Signal K vessel position',
-              default: true,
-            },
             channel: {
               type: 'integer',
               title: 'Meshtastic channel index for alerts and commands (0-7, where 0 is the public primary channel)',
@@ -934,16 +908,6 @@ module.exports = (app) => {
               type: 'string',
               title: 'Battery instance id used for the "Boat info" command reply (e.g. "house" or "0")',
               default: 'house',
-            },
-            digital_switching: {
-              type: 'boolean',
-              title: 'Allow changing digital switch status by Meshtastic message ("turn decklight on")',
-              default: false,
-            },
-            populate_vessels: {
-              type: 'boolean',
-              title: 'Populate Signal K vessels for Meshtastic devices sharing location (for display in Freeboard etc)',
-              default: false,
             },
           },
         },

@@ -1,7 +1,7 @@
 Signal K integration with Meshtastic
 ====================================
 
-This plugin enables vessels running [Signal K](https://signalk.org) to interact with the [Meshtastic](https://meshtastic.org) mesh network. Meshtastic allows radio communications between relatively inexpensive LoRa devices over long distances. The Signal K Meshtastic plugin allows seeing telemetry and receiving alerts from your vessel while ashore. It can also control vessel features like digital switching over text message.
+This plugin enables vessels running [Signal K](https://signalk.org) to interact with the [Meshtastic](https://meshtastic.org) mesh network. Meshtastic allows radio communications between relatively inexpensive LoRa devices over long distances. The Signal K Meshtastic plugin allows seeing telemetry and receiving alerts from your vessel while ashore.
 
 If desired, telemetry and position information can also be shared between multiple Meshtastic-using vessels, making it effectively a "pseudo-AIS" system.
 
@@ -38,10 +38,8 @@ In production use on several boats.
  * Alerts are broadcast on the configured Meshtastic channel (`channel` setting, defaults to `1`; set to `0` for the public primary channel)
 * Control Signal K with Meshtastic messages (via a direct message to the boat node or on the configured channel):
  * Share Meshtastic waypoints for AIS targets (_"Waypoint DH8613"_)
- * Control digital switching (_"Turn decklight on"_). Opt-in.
  * Query live vessel status (_"Boat info"_)
-* Show position-sharing Meshtastic nodes as vessels in Freeboard etc. Opt-in.
-  * Associate Meshtastic nodes with other (AIS) vessels based on the `Some node name DE <callsign>` pattern
+* Associate Meshtastic nodes with other (AIS) vessels based on the `Some node name DE <callsign>` pattern
 
 ## Planned features
 

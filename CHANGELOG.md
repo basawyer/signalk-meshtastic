@@ -16,6 +16,9 @@
 - `send_environment_metrics` setting and outgoing environment telemetry to Meshtastic (wind, temperature, battery, etc.)
 - `send_alerts` setting: Signal K alerts are now always sent to Meshtastic
 - `nodes` ("Related Meshtastic nodes") config and onboard/dinghy role assignments
+- `send_position` setting: vessel position is now always pushed to the Meshtastic node
+- `digital_switching` setting and the "Turn &lt;switch&gt; on/off" Meshtastic command
+- `populate_vessels` setting and synthetic MMSI vessel creation for Meshtastic nodes
 
 ## [1.4.0] - 2026-06-19
 ### Added
