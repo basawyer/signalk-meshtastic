@@ -48,7 +48,7 @@ function buildStatus(app, settings) {
   const soc = readValue(app, `electrical.batteries.${batteryId}.capacity.stateOfCharge`);
   const current = readValue(app, `electrical.batteries.${batteryId}.current`);
   if ([voltage, soc, current].some(Number.isFinite)) {
-    const parts = [`Bat: ${fmt(voltage, 1) || '?'}V`];
+    const parts = [`Battery: ${fmt(voltage, 1) || '?'}V`];
     if (Number.isFinite(soc)) {
       parts.push(`${fmt(soc * 100, 0)}%`);
     }
