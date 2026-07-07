@@ -1,5 +1,5 @@
 {
-  "name": "@meri-imperiumi/signalk-meshtastic",
+  "name": "@basawyer/signalk-meshtastic",
   "version": "1.4.0",
   "description": "Signal K plugin for interfacing with the Meshtastic LoRa mesh network",
   "scripts": {
@@ -8,12 +8,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/meri-imperiumi/signalk-meshtastic.git"
+    "url": "git://github.com/basawyer/signalk-meshtastic.git"
   },
   "bugs": {
-    "url": "https://github.com/meri-imperiumi/signalk-meshtastic/issues"
+    "url": "https://github.com/basawyer/signalk-meshtastic/issues"
   },
-  "homepage": "https://github.com/meri-imperiumi/signalk-meshtastic#readme",
+  "homepage": "https://github.com/basawyer/signalk-meshtastic#readme",
   "keywords": [
     "meshtastic",
     "signalk-node-server-plugin",
