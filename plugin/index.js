@@ -4,7 +4,7 @@ const { join } = require('path');
 const Telemetry = require('./telemetry');
 const commands = require('./commands/index');
 const { sendMOB } = require('./waypoint');
-const { sendNotification } = require('./notifications');
+const { sendNotification, sendReminders } = require('./notifications');
 
 if (!global.crypto) {
   // Older Node.js versions (like the one bundled in Venus OS
@@ -228,6 +228,7 @@ module.exports = (app) => {
   const nodes = {};
   const telemetry = new Telemetry();
   let publishInterval;
+  let reminderInterval;
   plugin.id = 'signalk-meshtastic';
   plugin.name = 'Meshtastic';
   plugin.description = 'Connect Signal K with the Meshtastic LoRa mesh network';
@@ -321,6 +322,15 @@ module.exports = (app) => {
       )
         .catch((e) => app.error(`Failed to send telemetry: ${e.message}`));
     }, 60000 * 4);
+
+    // Re-send alarms that have stayed active longer than the reminder interval
+    reminderInterval = setInterval(() => {
+      if (!device) {
+        // Not connected to Meshtastic yet
+        return;
+      }
+      sendReminders(episodes, settings, device, app);
+    }, 60000);
 
     function setWatchdog() {
       // Clear previous watchdog. This runs on every incoming packet, so only
@@ -935,6 +945,9 @@ module.exports = (app) => {
   plugin.stop = () => {
     if (publishInterval) {
       clearInterval(publishInterval);
+    }
+    if (reminderInterval) {
+      clearInterval(reminderInterval);
     }
     if (watchdog) {
       clearTimeout(watchdog);

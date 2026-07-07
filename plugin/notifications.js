@@ -1,86 +1,90 @@
-const debounceMs = 5 * 60 * 1000;
+// How long an alarm may stay active before we send a reminder notification
+const reminderMs = 5 * 60 * 1000;
 
-function wasCleared(path, episode, currentTime) {
-  if (!episode) {
-    // No stored episode, assumed to be cleared or never raised
-    return true;
-  }
-  if (!episode.clearedSince) {
-    // Not cleared at the moment, aka. active notification
-    return false;
-  }
-  if (currentTime - episode.clearedSince >= debounceMs) {
-    // Enough time has been passed since clearing that it can be cleared
-    return true;
-  }
-  return false;
-}
-
-function shouldWeSendNotification(path, value, episodes, settings, now) {
+// Decides what (if anything) we should transmit for a given notification delta.
+// Returns { kind: 'alert' | 'clear' | null, message }.
+//
+// Behaviour:
+// - The first time a path goes into alarm we send an alert.
+// - While it stays in alarm we suppress duplicate deltas (reminders are handled
+//   separately by dueReminders on a timer).
+// - When it returns to normal we send a single back-to-normal message and
+//   forget the episode, so the very next alarm is sent immediately.
+function evaluateNotification(path, value, episodes, settings, now) {
   const currentTime = now || new Date();
 
   if (!settings.communications || !settings.communications.send_alerts) {
-    return false;
+    return { kind: null };
   }
-  if (!value) {
-    return false;
-  }
+
   const statesToSend = [
     'alarm',
     'emergency',
   ];
   const episode = episodes.get(path);
-  if (!value.state || !statesToSend.includes(value.state)) {
-    if (episode) {
-      if (!episode.clearedSince) {
-        episode.clearedSince = currentTime;
-      }
-      if (wasCleared(path, episode, currentTime)) {
-        // This episode may be cleared
-        episodes.delete(path);
-      }
+  const isAlert = !!(value && value.state && statesToSend.includes(value.state));
+
+  if (!isAlert) {
+    // Cleared or non-alert notification (a deleted notification arrives as a
+    // null value, which we also treat as a clear)
+    if (!episode) {
+      return { kind: null };
     }
-    return false;
+    const message = (value && value.message) || `Cleared: ${episode.message}`;
+    // Forget the episode so the next alarm on this path is sent immediately
+    episodes.delete(path);
+    return { kind: 'clear', message };
   }
 
-  // Prevent deduplication of alerts. Some alerts like a bilge sensor often turn rapidly on and off
-  if (!episode) {
-    // First alert of this kind
-    episodes.set(path, {
-      startTime: currentTime,
-      openState: value.state,
-      transitions: 1,
-      clearedSince: null,
-    });
-    return true;
-  }
-
-  if (!wasCleared(path, episode, currentTime)) {
-    // We have sent this and it hasn't yet expired
+  if (episode) {
+    // Already in alarm; suppress duplicate deltas. Reminders while the alarm
+    // persists are emitted by dueReminders instead.
     episode.transitions += 1;
-    return false;
+    return { kind: null };
   }
 
-  episode.clearedSince = null;
-
-  return true;
+  // First alert of this kind
+  episodes.set(path, {
+    startTime: currentTime,
+    lastAlertAt: currentTime,
+    openState: value.state,
+    message: value.message,
+    method: value.method,
+    transitions: 1,
+  });
+  return { kind: 'alert', message: value.message };
 }
 
-function sendNotification(path, value, episodes, settings, device, app) {
-  if (!device) {
-    // Not connected to Meshtastic yet
-    return false;
-  }
+// Returns the reminders that are due for alarms that have stayed active longer
+// than the reminder interval, updating each episode's last-alerted time.
+function dueReminders(episodes, now) {
+  const currentTime = now || new Date();
+  const due = [];
+  Array.from(episodes.keys()).forEach((path) => {
+    const episode = episodes.get(path);
+    if (!episode) {
+      return;
+    }
+    if (currentTime - episode.lastAlertAt >= reminderMs) {
+      episode.lastAlertAt = currentTime;
+      episode.transitions += 1;
+      due.push({ path, message: episode.message, method: episode.method });
+    }
+  });
+  return due;
+}
 
-  if (!shouldWeSendNotification(path, value, episodes, settings, device)) {
-    return Promise.resolve();
-  }
+function shouldWeSendNotification(path, value, episodes, settings, now) {
+  return evaluateNotification(path, value, episodes, settings, now).kind === 'alert';
+}
 
+function deliver(message, method, settings, device, app) {
   let bell = '';
-  if (value.method && value.method.indexOf('sound') !== -1) {
+  if (method && method.indexOf('sound') !== -1) {
     // Trigger audible bell on receiving Meshtastic devices
     bell = '\u0007 ';
   }
+  const text = `${bell}${message}`;
 
   const alertChannel = settings.communications
     && Number.isInteger(settings.communications.alert_channel)
@@ -89,25 +93,60 @@ function sendNotification(path, value, episodes, settings, device, app) {
 
   if (alertChannel >= 0) {
     // Broadcast the alert to a (private) channel instead of individual crew DMs
-    return device.sendText(`${bell}${value.message}`, 'broadcast', true, alertChannel)
+    return device.sendText(text, 'broadcast', true, alertChannel)
       .catch((e) => app.error(`Failed to send alert: ${e.message}`));
   }
 
   const crew = (settings.nodes || []).filter((node) => node.role === 'crew');
   if (!crew.length) {
     // No crew nodes to send to
-    return false;
+    return Promise.resolve(false);
   }
 
   // Send alert to each crew member
   return crew.reduce(
-    (prev, member) => prev.then(() => device.sendText(`${bell}${value.message}`, member.node, true, false)),
+    (prev, member) => prev.then(() => device.sendText(text, member.node, true, false)),
     Promise.resolve(),
   )
     .catch((e) => app.error(`Failed to send alert: ${e.message}`));
 }
 
+function sendNotification(path, value, episodes, settings, device, app) {
+  if (!device) {
+    // Not connected to Meshtastic yet
+    return false;
+  }
+
+  const action = evaluateNotification(path, value, episodes, settings);
+  if (action.kind !== 'alert' && action.kind !== 'clear') {
+    return Promise.resolve();
+  }
+
+  // Only alerts carry the audible bell; clears are informational
+  const method = action.kind === 'alert' && value ? value.method : null;
+  return deliver(action.message, method, settings, device, app);
+}
+
+// Sends reminder notifications for alarms that have stayed active too long.
+// Intended to be called periodically (e.g. from a timer).
+function sendReminders(episodes, settings, device, app, now) {
+  if (!device) {
+    return Promise.resolve();
+  }
+  if (!settings.communications || !settings.communications.send_alerts) {
+    return Promise.resolve();
+  }
+  const due = dueReminders(episodes, now);
+  return due.reduce(
+    (prev, item) => prev.then(() => deliver(item.message, item.method, settings, device, app)),
+    Promise.resolve(),
+  );
+}
+
 module.exports = {
+  evaluateNotification,
+  dueReminders,
   shouldWeSendNotification,
   sendNotification,
+  sendReminders,
 };
