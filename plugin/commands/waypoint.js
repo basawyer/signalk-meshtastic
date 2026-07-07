@@ -3,7 +3,6 @@ const { vesselIcon, sendWaypoint } = require('../waypoint');
 const regex = /waypoint ([a-z0-9]+)( ([0-9]+)h)?/i;
 
 module.exports = {
-  crewOnly: true,
   example: 'Waypoint <callsign or boat name>',
   accept: (msg) => {
     // FIXME: Add support for vessel names with spaces

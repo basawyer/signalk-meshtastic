@@ -1,5 +1,4 @@
 module.exports = {
-  crewOnly: true,
   example: 'Turn <switch name> on',
   accept: (msg, settings) => {
     const switching = msg.data.match(/turn ([a-z0-9]+) (on|off)/i);

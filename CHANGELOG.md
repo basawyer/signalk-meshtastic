@@ -2,10 +2,16 @@
 
 ## [Unreleased] - Sharlie fork
 ### Added
-- `alert_channel` setting to broadcast alerts to a (private) channel index instead of direct-messaging individual crew nodes
-- `Boat info` text command: reply with live vessel data (battery, depth, wind, water temp, SOG) when received as a DM or on a channel
+- `channel` setting: the Meshtastic channel index (0-7, default `1`, `0` = public primary) used for both broadcasting alerts and accepting commands
+- `Boat info` text command: reply with live vessel data (battery, depth, wind, water temp, SOG) when received as a DM or on the configured channel
 - `boat_info_battery` setting to pick which `electrical.batteries.<id>` instance the `Boat info` reply reports
-- Commands can now opt in to handling channel (non-DM) messages via an `allowChannel` flag
+
+### Changed
+- Alerts are now always broadcast on the configured channel
+- Commands are accepted from direct messages to the boat node or from the configured channel
+
+### Removed
+- Crew nodes concept: alerts and commands no longer target individually configured crew nodes (removed the `crew` node role, `alert_channel`, and the per-command `crewOnly`/`allowChannel` flags)
 
 ## [1.4.0] - 2026-06-19
 ### Added

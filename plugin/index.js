@@ -628,19 +628,17 @@ module.exports = (app) => {
           }),
           device.events.onMessagePacket.subscribe((message) => {
             const isDirect = message.type === 'direct';
-            const fromCrew = commands.isFromCrew(message, settings);
+            const commandChannel = settings.communications
+              && Number.isInteger(settings.communications.channel)
+              ? settings.communications.channel
+              : 1;
+            // Only act on direct messages to us, or messages on our configured
+            // channel. Chatter on any other channel is ignored.
+            if (!isDirect && message.channel !== commandChannel) {
+              return;
+            }
             Object.keys(commands).forEach((cmd) => {
-              if (cmd === 'isFromCrew') {
-                return;
-              }
               const command = commands[cmd];
-              if (!isDirect && !command.allowChannel) {
-                // Non-DM (channel) messages only reach commands that opt in
-                return;
-              }
-              if (command.crewOnly && !fromCrew) {
-                return;
-              }
               if (!command.accept(message, settings)) {
                 return;
               }
@@ -1050,10 +1048,6 @@ module.exports = (app) => {
                 title: 'Role',
                 oneOf: [
                   {
-                    const: 'crew',
-                    title: 'Node carried by crew member',
-                  },
-                  {
                     const: 'dinghy',
                     title: 'Dinghy tracker node',
                   },
@@ -1077,13 +1071,15 @@ module.exports = (app) => {
             },
             send_alerts: {
               type: 'boolean',
-              title: 'Send alerts to crew via Meshtastic',
+              title: 'Send Signal K alerts as Meshtastic messages',
               default: true,
             },
-            alert_channel: {
+            channel: {
               type: 'integer',
-              title: 'Channel index to broadcast alerts on (0-7). Set to -1 to send direct messages to crew nodes instead.',
-              default: -1,
+              title: 'Meshtastic channel index for alerts and commands (0-7, where 0 is the public primary channel)',
+              default: 1,
+              minimum: 0,
+              maximum: 7,
             },
             boat_info_battery: {
               type: 'string',
@@ -1097,7 +1093,7 @@ module.exports = (app) => {
             },
             digital_switching: {
               type: 'boolean',
-              title: 'Allow crew members to change digital switch status by Meshtastic message ("turn decklight on")',
+              title: 'Allow changing digital switch status by Meshtastic message ("turn decklight on")',
               default: false,
             },
             populate_vessels: {

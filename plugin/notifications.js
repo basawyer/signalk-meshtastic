@@ -86,28 +86,14 @@ function deliver(message, method, settings, device, app) {
   }
   const text = `${bell}${message}`;
 
-  const alertChannel = settings.communications
-    && Number.isInteger(settings.communications.alert_channel)
-    ? settings.communications.alert_channel
-    : -1;
+  // Broadcast the alert on the configured channel (channel 0 is the public
+  // primary channel)
+  const channel = settings.communications
+    && Number.isInteger(settings.communications.channel)
+    ? settings.communications.channel
+    : 1;
 
-  if (alertChannel >= 0) {
-    // Broadcast the alert to a (private) channel instead of individual crew DMs
-    return device.sendText(text, 'broadcast', true, alertChannel)
-      .catch((e) => app.error(`Failed to send alert: ${e.message}`));
-  }
-
-  const crew = (settings.nodes || []).filter((node) => node.role === 'crew');
-  if (!crew.length) {
-    // No crew nodes to send to
-    return Promise.resolve(false);
-  }
-
-  // Send alert to each crew member
-  return crew.reduce(
-    (prev, member) => prev.then(() => device.sendText(text, member.node, true, false)),
-    Promise.resolve(),
-  )
+  return device.sendText(text, 'broadcast', true, channel)
     .catch((e) => app.error(`Failed to send alert: ${e.message}`));
 }
 

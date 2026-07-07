@@ -33,13 +33,13 @@ In production use on several boats.
   * Keep a persistent database of all seen Meshtastic nodes
   * Note: Serial transport support was removed in 1.3.0 to comply with [postinstall deprecation](https://demo.signalk.org/documentation/Developing/Plugins/Publishing_to_The_AppStore.html#important-avoid-install-time-scripts)
 * Update Meshtastic node position from Signal K GNSS position
-* Send Signal K alerts as Meshtastic text messages to crew
+* Send Signal K alerts as Meshtastic text messages
  * MOB alerts (for example from [signalk-mob-notifier](https://github.com/meri-imperiumi/signalk-mob-notifier)) also send a waypoint to the MOB beacon
- * Alerts can be broadcast to a (private) channel index instead of crew direct messages (`alert_channel` setting)
-* Control Signal K with Meshtastic direct messages:
+ * Alerts are broadcast on the configured Meshtastic channel (`channel` setting, defaults to `1`; set to `0` for the public primary channel)
+* Control Signal K with Meshtastic messages (via a direct message to the boat node or on the configured channel):
  * Share Meshtastic waypoints for AIS targets (_"Waypoint DH8613"_)
  * Control digital switching (_"Turn decklight on"_). Opt-in.
- * Query live vessel status (_"Boat info"_) as a direct message or on a channel
+ * Query live vessel status (_"Boat info"_)
 * Share weather station data from Signal K (wind, temperature, etc) over Meshtastic. Opt-in.
 * Show position-sharing Meshtastic nodes as vessels in Freeboard etc. Opt-in.
   * Associate Meshtastic nodes with other (AIS) vessels based on the `Some node name DE <callsign>` pattern
@@ -69,7 +69,7 @@ LoRa is line-of-sight communications quite similarly to VHF. Communications rang
   (yes, you need to use `DE` also for non-German vessels. This is radio slang for "this is", not a country code)
 * Install and enable this plugin, and set up the connection details (IP address etc)
 * Wait for some minutes for the plugin to see nearby Meshtastic nodes
-* Configure plugin and set appropriate roles for the crew and dinghy tracker Meshtastic devices
+* Configure the plugin: set the Meshtastic channel to use for alerts and commands, and optionally set roles for onboard equipment and the dinghy tracker Meshtastic devices
 
 ![](https://github.com/meri-imperiumi/signalk-meshtastic/raw/main/doc/config-crew-role.png)
 

@@ -91,8 +91,6 @@ function buildStatus(app, settings) {
 }
 
 module.exports = {
-  crewOnly: false,
-  allowChannel: true,
   example: 'Boat info',
   accept: (msg) => (msg.data.trim().toLowerCase() === 'boat info'),
   handle: (msg, settings, device, app) => {
