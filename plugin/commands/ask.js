@@ -1,5 +1,5 @@
 const MAX_RESPONSE_BYTES = 200;
-const DEFAULT_MODEL = 'claude-3-5-haiku-latest';
+const DEFAULT_MODEL = 'claude-haiku-4-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 
 const regex = /^ask\s+(.+)/i;
@@ -48,7 +48,16 @@ async function askClaude(question, apiKey, model) {
   });
 
   if (!response.ok) {
-    throw new Error(`Claude API returned ${response.status}`);
+    let detail = '';
+    try {
+      const errorBody = await response.json();
+      detail = errorBody && errorBody.error && errorBody.error.message
+        ? `: ${errorBody.error.message}`
+        : `: ${JSON.stringify(errorBody)}`;
+    } catch (e) {
+      // Response body was not JSON; the status code alone will have to do.
+    }
+    throw new Error(`Claude API returned ${response.status}${detail}`);
   }
 
   const body = await response.json();

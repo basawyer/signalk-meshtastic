@@ -917,7 +917,7 @@ module.exports = (app) => {
             ask_model: {
               type: 'string',
               title: 'Claude model used for the "Ask" command',
-              default: 'claude-3-5-haiku-latest',
+              default: 'claude-haiku-4-5',
             },
           },
         },
