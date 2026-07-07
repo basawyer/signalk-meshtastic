@@ -596,16 +596,17 @@ module.exports = (app) => {
             setConnectionStatus();
           }),
           device.events.onMessagePacket.subscribe((message) => {
-            if (message.type !== 'direct') {
-              // Not DM
-              return;
-            }
+            const isDirect = message.type === 'direct';
             const fromCrew = commands.isFromCrew(message, settings);
             Object.keys(commands).forEach((cmd) => {
               if (cmd === 'isFromCrew') {
                 return;
               }
               const command = commands[cmd];
+              if (!isDirect && !command.allowChannel) {
+                // Non-DM (channel) messages only reach commands that opt in
+                return;
+              }
               if (command.crewOnly && !fromCrew) {
                 return;
               }
@@ -1042,6 +1043,11 @@ module.exports = (app) => {
               type: 'boolean',
               title: 'Send alerts to crew via Meshtastic',
               default: true,
+            },
+            alert_channel: {
+              type: 'integer',
+              title: 'Channel index to broadcast alerts on (0-7). Set to -1 to send direct messages to crew nodes instead.',
+              default: -1,
             },
             send_environment_metrics: {
               type: 'boolean',

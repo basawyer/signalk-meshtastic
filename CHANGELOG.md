@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased] - Sharlie fork
+### Added
+- `alert_channel` setting to broadcast alerts to a (private) channel index instead of direct-messaging individual crew nodes
+
 ## [1.4.0] - 2026-06-19
 ### Added
 - Notifications that clear and reissue rapidly are only sent once

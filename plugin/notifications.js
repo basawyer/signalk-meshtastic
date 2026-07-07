@@ -76,16 +76,27 @@ function sendNotification(path, value, episodes, settings, device, app) {
     return Promise.resolve();
   }
 
-  const crew = settings.nodes.filter((node) => node.role === 'crew');
-  if (!crew.length) {
-    // No crew nodes to send to
-    return false;
-  }
-
   let bell = '';
   if (value.method && value.method.indexOf('sound') !== -1) {
     // Trigger audible bell on receiving Meshtastic devices
     bell = '\u0007 ';
+  }
+
+  const alertChannel = settings.communications
+    && Number.isInteger(settings.communications.alert_channel)
+    ? settings.communications.alert_channel
+    : -1;
+
+  if (alertChannel >= 0) {
+    // Broadcast the alert to a (private) channel instead of individual crew DMs
+    return device.sendText(`${bell}${value.message}`, 'broadcast', true, alertChannel)
+      .catch((e) => app.error(`Failed to send alert: ${e.message}`));
+  }
+
+  const crew = (settings.nodes || []).filter((node) => node.role === 'crew');
+  if (!crew.length) {
+    // No crew nodes to send to
+    return false;
   }
 
   // Send alert to each crew member
