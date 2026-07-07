@@ -3,6 +3,9 @@
 ## [Unreleased] - Sharlie fork
 ### Added
 - `alert_channel` setting to broadcast alerts to a (private) channel index instead of direct-messaging individual crew nodes
+- `Boat info` text command: reply with live vessel data (battery, depth, wind, water temp, SOG) when received as a DM or on a channel
+- `boat_info_battery` setting to pick which `electrical.batteries.<id>` instance the `Boat info` reply reports
+- Commands can now opt in to handling channel (non-DM) messages via an `allowChannel` flag
 
 ## [1.4.0] - 2026-06-19
 ### Added

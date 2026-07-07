@@ -1049,6 +1049,11 @@ module.exports = (app) => {
               title: 'Channel index to broadcast alerts on (0-7). Set to -1 to send direct messages to crew nodes instead.',
               default: -1,
             },
+            boat_info_battery: {
+              type: 'string',
+              title: 'Battery instance id used for the "Boat info" command reply (e.g. "house" or "0")',
+              default: 'house',
+            },
             send_environment_metrics: {
               type: 'boolean',
               title: 'Send environment metrics (wind, temperature, etc) to Meshtastic',

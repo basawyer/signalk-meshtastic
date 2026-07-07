@@ -39,6 +39,7 @@ In production use on several boats.
 * Control Signal K with Meshtastic direct messages:
  * Share Meshtastic waypoints for AIS targets (_"Waypoint DH8613"_)
  * Control digital switching (_"Turn decklight on"_). Opt-in.
+ * Query live vessel status (_"Boat info"_) as a direct message or on a channel
 * Share weather station data from Signal K (wind, temperature, etc) over Meshtastic. Opt-in.
 * Show position-sharing Meshtastic nodes as vessels in Freeboard etc. Opt-in.
   * Associate Meshtastic nodes with other (AIS) vessels based on the `Some node name DE <callsign>` pattern
