@@ -68,7 +68,7 @@ LoRa is line-of-sight communications quite similarly to VHF. Communications rang
   (yes, you need to use `DE` also for non-German vessels. This is radio slang for "this is", not a country code)
 * Install and enable this plugin, and set up the connection details (IP address etc)
 * Wait for some minutes for the plugin to see nearby Meshtastic nodes
-* Configure the plugin: set the Meshtastic channel to use for alerts and commands, and optionally set roles for onboard equipment and the dinghy tracker Meshtastic devices
+* Configure the plugin: set the Meshtastic channel to use for alerts and commands
 
 ![](https://github.com/meri-imperiumi/signalk-meshtastic/raw/main/doc/config-crew-role.png)
 

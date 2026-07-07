@@ -27,19 +27,6 @@ function getNodeContext(app, node, nodeNum, settings) {
   if (node.thisNode) {
     return 'vessels.self';
   }
-  if (settings.nodes && settings.nodes.length && settings.nodes
-    .find((settingNode) => {
-      if (settingNode.node !== nodeNum) {
-        return false;
-      }
-      if (settingNode.role !== 'onboard') {
-        return false;
-      }
-      return true;
-    })) {
-    // Onboard equipment
-    return 'vessels.self';
-  }
   // Create context for other nodes
   // Associate nodes with AIS vessels if callsign available
   if (!app.signalk.root.vessels) {
@@ -888,25 +875,6 @@ module.exports = (app) => {
       });
   };
   plugin.schema = () => {
-    function nodeList() {
-      if (Object.keys(nodes).length === 0) {
-        return [];
-      }
-      return Object.keys(nodes)
-        .filter((nodeId) => {
-          if (nodes[nodeId].thisNode) {
-            return false;
-          }
-          return true;
-        })
-        .map((nodeId) => {
-          const node = nodes[nodeId];
-          return {
-            const: parseInt(nodeId, 10),
-            title: `${nodeId} ${node.shortName} (${node.longName})`,
-          };
-        });
-    }
     const schema = {
       type: 'object',
       properties: {
@@ -943,39 +911,6 @@ module.exports = (app) => {
               type: 'integer',
               default: 60000,
               title: 'Heartbeat inverval (milliseconds)',
-            },
-          },
-        },
-        nodes: {
-          type: 'array',
-          title: 'Related Meshtastic nodes',
-          minItems: 0,
-          items: {
-            type: 'object',
-            required: [
-              'node',
-              'role',
-            ],
-            properties: {
-              node: {
-                type: 'integer',
-                title: 'Node',
-                oneOf: nodeList(),
-              },
-              role: {
-                type: 'string',
-                title: 'Role',
-                oneOf: [
-                  {
-                    const: 'dinghy',
-                    title: 'Dinghy tracker node',
-                  },
-                  {
-                    const: 'onboard',
-                    title: 'Onboard equipment',
-                  },
-                ],
-              },
             },
           },
         },
