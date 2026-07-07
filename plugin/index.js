@@ -909,6 +909,16 @@ module.exports = (app) => {
               title: 'Battery instance id used for the "Boat info" command reply (e.g. "house" or "0")',
               default: 'house',
             },
+            anthropic_api_key: {
+              type: 'string',
+              title: 'Anthropic (Claude) API key used for the "Ask" command. Leave empty to disable.',
+              default: '',
+            },
+            ask_model: {
+              type: 'string',
+              title: 'Claude model used for the "Ask" command',
+              default: 'claude-3-5-haiku-latest',
+            },
           },
         },
       },

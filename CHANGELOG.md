@@ -5,6 +5,8 @@
 - `channel` setting: the Meshtastic channel index (0-7, default `1`, `0` = public primary) used for both broadcasting alerts and accepting commands
 - `Boat info` text command: reply with live vessel data (battery, depth, wind, water temp, SOG) when received as a DM or on the configured channel
 - `boat_info_battery` setting to pick which `electrical.batteries.<id>` instance the `Boat info` reply reports
+- `Ask <question>` text command: forward the question to Claude and reply with a succinct plain-text answer (truncated to 200 bytes)
+- `anthropic_api_key` and `ask_model` settings to configure the Claude API used by the `Ask` command
 
 ### Changed
 - Alerts are now always broadcast on the configured channel
