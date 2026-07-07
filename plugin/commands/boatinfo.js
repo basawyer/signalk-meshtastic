@@ -40,7 +40,7 @@ function buildStatus(app, settings) {
   let header = 'Boat status';
   const name = readValue(app, 'name');
   if (typeof name === 'string' && name.length) {
-    header = `${name} status`;
+    header = `${name} Status:`;
   }
   const lines = [header];
 
