@@ -216,6 +216,11 @@ module.exports = (app) => {
   let device;
   let watchdog;
   let watchdogTriggered = 0;
+  // Guards against a single disconnect turning into a hot reconnect loop
+  let restarting = false;
+  let restartTimer;
+  // How long to wait before reconnecting after a disconnect
+  const restartDelay = 5000;
   const unsubscribes = {
     signalk: [],
     meshtastic: [],
@@ -267,6 +272,22 @@ module.exports = (app) => {
       return;
     }
 
+    // A fresh start has begun, so allow future disconnects to trigger a restart
+    restarting = false;
+
+    // Restart at most once per disconnect, and only after a short backoff so a
+    // flapping connection doesn't spin at ~1s intervals
+    function triggerRestart(reason) {
+      if (restarting) {
+        return;
+      }
+      restarting = true;
+      app.debug(`${reason}; reconnecting in ${restartDelay / 1000}s`);
+      restartTimer = setTimeout(() => {
+        restart(settings);
+      }, restartDelay);
+    }
+
     const nodeDbFile = join(app.getDataDirPath(), 'node-db.json');
 
     publishInterval = setInterval(() => {
@@ -302,8 +323,11 @@ module.exports = (app) => {
     }, 60000 * 4);
 
     function setWatchdog() {
-      // Clear previous watchdog
-      app.debug(`Watchdog ${watchdogTriggered} reset`);
+      // Clear previous watchdog. This runs on every incoming packet, so only
+      // log when we're recovering from a previous trigger to avoid log spam.
+      if (watchdogTriggered > 0) {
+        app.debug(`Watchdog reset after ${watchdogTriggered} trigger(s)`);
+      }
       if (watchdog) {
         clearTimeout(watchdog);
       }
@@ -313,7 +337,7 @@ module.exports = (app) => {
         watchdogTriggered += 1;
         app.debug(`Watchdog ${watchdogTriggered} triggered, no packets seen in ${minutes}min`);
         app.error(`Watchdog ${watchdogTriggered} triggered, no packets seen in ${minutes}min`);
-        restart(settings);
+        triggerRestart('Watchdog triggered');
       }, 60000 * minutes);
     }
 
@@ -538,7 +562,11 @@ module.exports = (app) => {
         if (settings.device && settings.device.transport === 'http') {
           return TransportHTTP.create(settings.device.address);
         }
-        return TransportNode.create(settings.device.address);
+        // Give the TCP socket a timeout well above the heartbeat interval,
+        // otherwise a slightly-late heartbeat lets the socket time out and
+        // triggers a spurious disconnect/restart
+        const heartbeatInterval = settings.device.heartbeat_interval || 60000;
+        return TransportNode.create(settings.device.address, 4403, heartbeatInterval * 3);
       })
       .then((transport) => {
         device = new MeshDevice(transport);
@@ -547,8 +575,7 @@ module.exports = (app) => {
             setConnectionStatus();
             if (state === 2) {
               // Disconnected
-              app.debug('Received disconnect event, restarting');
-              restart(settings);
+              triggerRestart('Received disconnect event');
             }
           }),
           device.events.onMyNodeInfo.subscribe((myNodeInfo) => {
@@ -858,8 +885,9 @@ module.exports = (app) => {
               }
               u.values.forEach((v) => {
                 if (v.path === 'navigation.position') {
-                  if (!device) {
-                    // Not connected to Meshtastic yet
+                  if (!device || device.deviceStatus !== 7) {
+                    // Not connected and configured yet; sending an ACK-tracked
+                    // admin packet now would fail with "Packet does not exist"
                     return;
                   }
                   if (!Number.isFinite(v.value.latitude)
@@ -907,10 +935,7 @@ module.exports = (app) => {
         // Couldn't find node, possibly due to a node restart/crash
         // Try connecting again after a while
         app.error(`Unable to connect to node ${settings.device.address}: ${e.code} ${e.message}. Retrying`);
-        setTimeout(() => {
-          app.debug('Triggered restart due to failed initial connect/configure');
-          restart(settings);
-        }, 30000);
+        triggerRestart('Failed initial connect/configure');
       });
   };
   plugin.stop = () => {
@@ -919,6 +944,10 @@ module.exports = (app) => {
     }
     if (watchdog) {
       clearTimeout(watchdog);
+    }
+    if (restartTimer) {
+      clearTimeout(restartTimer);
+      restartTimer = undefined;
     }
     unsubscribes.signalk.forEach((f) => f());
     unsubscribes.signalk = [];
