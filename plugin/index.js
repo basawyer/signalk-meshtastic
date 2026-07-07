@@ -511,14 +511,8 @@ module.exports = (app) => {
                     {
                       state: 'warn',
                       lower: 0,
-                      upper: 5,
+                      upper: 6,
                       message: 'Not connected to Meshtastic device',
-                    },
-                    {
-                      state: 'nominal',
-                      lower: 7,
-                      upper: 8,
-                      message: 'Meshtastic connected and configured',
                     },
                   ],
                 },
