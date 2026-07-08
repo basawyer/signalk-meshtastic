@@ -70,7 +70,7 @@ describe('ask command', () => {
       {
         data: 'ask hello', type: 'broadcast', channel: 1,
       },
-      { communications: {} },
+      { ask: {} },
       device,
       { error: () => {} },
     );
@@ -87,7 +87,7 @@ describe('ask command', () => {
       {
         data: 'ask capital of thailand', type: 'broadcast', channel: 1,
       },
-      { communications: { anthropic_api_key: 'key' } },
+      { ask: { anthropic_api_key: 'key', add_notes: true } },
       device,
       app,
     );
@@ -103,7 +103,7 @@ describe('ask command', () => {
       {
         data: 'ask capital of thailand', type: 'broadcast', channel: 1,
       },
-      { communications: { anthropic_api_key: 'key' } },
+      { ask: { anthropic_api_key: 'key', add_notes: true } },
       device,
       fakeApp(),
     );
@@ -121,7 +121,7 @@ describe('ask command', () => {
       {
         data: 'ask capital of thailand', type: 'broadcast', channel: 1,
       },
-      { communications: { anthropic_api_key: 'key' } },
+      { ask: { anthropic_api_key: 'key', add_notes: true } },
       device,
       app,
     );
@@ -143,7 +143,7 @@ describe('ask command', () => {
       {
         data: 'ask capital of thailand', type: 'broadcast', channel: 1,
       },
-      { communications: { anthropic_api_key: 'key' } },
+      { ask: { anthropic_api_key: 'key', add_notes: true } },
       device,
       app,
     );
@@ -159,7 +159,7 @@ describe('ask command', () => {
       {
         data: 'ask something', type: 'broadcast', channel: 1,
       },
-      { communications: { anthropic_api_key: 'key' } },
+      { ask: { anthropic_api_key: 'key', add_notes: true } },
       device,
       app,
     );
@@ -181,11 +181,29 @@ describe('ask command', () => {
       {
         data: 'ask capital of thailand', type: 'broadcast', channel: 1,
       },
-      { communications: { anthropic_api_key: 'key' } },
+      { ask: { anthropic_api_key: 'key', add_notes: true } },
       device,
       app,
     );
     assert.equal(device.sent[0].text, 'Bangkok');
+  });
+
+  it('skips note storage when add_notes is off (default)', async () => {
+    global.fetch = mockClaude({
+      answer: 'Bangkok', name: 'Bangkok', latitude: 13.7563, longitude: 100.5018,
+    });
+    const device = fakeDevice();
+    const app = fakeApp();
+    await ask.handle(
+      {
+        data: 'ask capital of thailand', type: 'broadcast', channel: 1,
+      },
+      { ask: { anthropic_api_key: 'key' } },
+      device,
+      app,
+    );
+    assert.equal(device.sent[0].text, 'Bangkok');
+    assert.equal(app.notes.length, 0);
   });
 
   it('paginates an answer that is over 200 bytes', async () => {
@@ -195,7 +213,7 @@ describe('ask command', () => {
       {
         data: 'ask something', type: 'broadcast', channel: 1,
       },
-      { communications: { anthropic_api_key: 'key' } },
+      { ask: { anthropic_api_key: 'key', add_notes: true } },
       device,
       fakeApp(),
     );
@@ -218,7 +236,7 @@ describe('ask command', () => {
       {
         data: 'ask something', type: 'broadcast', channel: 1,
       },
-      { communications: { anthropic_api_key: 'key' } },
+      { ask: { anthropic_api_key: 'key', add_notes: true } },
       device,
       fakeApp(),
     );
@@ -234,7 +252,7 @@ describe('ask command', () => {
     const device = fakeDevice();
     await ask.handle(
       { data: 'ask something', type: 'broadcast', channel: 1 },
-      { communications: { anthropic_api_key: 'key' } },
+      { ask: { anthropic_api_key: 'key', add_notes: true } },
       device,
       fakeApp(),
     );

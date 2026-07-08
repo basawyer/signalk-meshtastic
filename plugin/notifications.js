@@ -86,9 +86,9 @@ function deliver(kind, message, method, settings, device, app) {
 
   // Broadcast the alert on the configured channel (channel 0 is the public
   // primary channel)
-  const channel = settings.communications
-    && Number.isInteger(settings.communications.channel)
-    ? settings.communications.channel
+  const channel = settings.device
+    && Number.isInteger(settings.device.channel)
+    ? settings.device.channel
     : 1;
 
   return device.sendText(text, 'broadcast', true, channel)

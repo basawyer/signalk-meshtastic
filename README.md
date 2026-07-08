@@ -34,10 +34,10 @@ In production use on several boats.
   * Note: Serial transport support was removed in 1.3.0 to comply with [postinstall deprecation](https://demo.signalk.org/documentation/Developing/Plugins/Publishing_to_The_AppStore.html#important-avoid-install-time-scripts)
 * Update Meshtastic node position from Signal K GNSS position
 * Send Signal K alerts as Meshtastic text messages
- * Alerts are broadcast on the configured Meshtastic channel (`channel` setting, defaults to `1`; set to `0` for the public primary channel)
+ * Alerts are broadcast on the configured Meshtastic channel (`device.channel` setting, defaults to `1`; set to `0` for the public primary channel)
 * Control Signal K with Meshtastic messages (via a direct message to the boat node or on the configured channel):
  * Query live vessel status (_"Boat info"_) — only on the configured channel, not via direct message
- * Ask Claude a question and get a succinct answer (_"Ask what is the capital of Thailand"_), requires an Anthropic API key in the settings; only on the configured channel, not via direct message, so DMs can't spend your API tokens. When the answer refers to a specific location, a Signal K note is stored (named for that place, with the answer as its text) and the reply is suffixed with `note added`
+ * Ask Claude a question and get a succinct answer (_"Ask what is the capital of Thailand"_), requires an Anthropic API key in the Ask settings; only on the configured channel, not via direct message, so DMs can't spend your API tokens. When `ask.add_notes` is enabled and the answer refers to a specific location, a Signal K note is stored (named for that place, with the answer as its text) and the reply is suffixed with `note added`
 * Associate Meshtastic nodes with other (AIS) vessels based on the `Some node name DE <callsign>` pattern
 
 ## Planned features
@@ -65,7 +65,7 @@ LoRa is line-of-sight communications quite similarly to VHF. Communications rang
   (yes, you need to use `DE` also for non-German vessels. This is radio slang for "this is", not a country code)
 * Install and enable this plugin, and set up the connection details (IP address etc)
 * Wait for some minutes for the plugin to see nearby Meshtastic nodes
-* Configure the plugin: set the Meshtastic channel to use for alerts and commands
+* Configure the plugin: Meshtastic device settings (address, transport, channel), optional Boat info / Ask command settings
 
 ![](https://github.com/meri-imperiumi/signalk-meshtastic/raw/main/doc/config-crew-role.png)
 

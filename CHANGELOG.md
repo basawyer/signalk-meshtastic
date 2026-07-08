@@ -2,13 +2,14 @@
 
 ## [Unreleased] - Sharlie fork
 ### Added
-- `channel` setting: the Meshtastic channel index (0-7, default `1`, `0` = public primary) used for both broadcasting alerts and accepting commands
+- `device.channel` setting: the Meshtastic channel index (0-7, default `1`, `0` = public primary) used for both broadcasting alerts and accepting commands
 - `Boat info` text command: reply with live vessel data (battery, depth, wind, water temp, SOG) when received on the configured channel
-- `boat_info_battery` setting to pick which `electrical.batteries.<id>` instance the `Boat info` reply reports
+- `boat_info.battery` setting to pick which `electrical.batteries.<id>` instance the `Boat info` reply reports
 - `Ask <question>` text command: forward the question to Claude and reply with a succinct plain-text answer, paginated across multiple messages (each <= 200 bytes, with `(i/n)` markers) when the answer is longer, up to a 5-message cap. Claude returns structured JSON; when the answer references a specific location, a note is stored in Signal K (via the Resources API) with a short location `name` as the title, the answer as the description, and the coordinates as the position — the reply is suffixed with `note added`
-- `anthropic_api_key` and `ask_model` settings to configure the Claude API used by the `Ask` command
+- `ask.anthropic_api_key`, `ask.model`, and `ask.add_notes` (default off) settings for the Claude API and optional Signal K note creation when an answer includes a location
 
 ### Changed
+- Plugin settings regrouped into Meshtastic device, Boat info command, and Ask command sections (removed the former `communications` group)
 - Alerts are now always broadcast on the configured channel
 - Commands are accepted from direct messages to the boat node or from the configured channel, except `Boat info` and `Ask`, which are only accepted on the configured channel (so direct messages can't spend Claude API tokens)
 - Alerts are prefixed with red siren emoji (🚨🚨) and back-to-normal messages with green light emoji (🟢🟢)

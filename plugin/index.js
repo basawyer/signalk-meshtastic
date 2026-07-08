@@ -568,9 +568,9 @@ module.exports = (app) => {
               return;
             }
             const isDirect = message.type === 'direct';
-            const commandChannel = settings.communications
-              && Number.isInteger(settings.communications.channel)
-              ? settings.communications.channel
+            const commandChannel = settings.device
+              && Number.isInteger(settings.device.channel)
+              ? settings.device.channel
               : 1;
             // Only act on direct messages to us, or messages on our configured
             // channel. Chatter on any other channel is ignored.
@@ -862,7 +862,7 @@ module.exports = (app) => {
       properties: {
         device: {
           type: 'object',
-          title: 'Meshtastic device connection settings',
+          title: 'Meshtastic device settings',
           properties: {
             transport: {
               type: 'string',
@@ -884,6 +884,13 @@ module.exports = (app) => {
               default: 'meshtastic.local',
               title: 'Address of the Meshtastic node',
             },
+            channel: {
+              type: 'integer',
+              title: 'Meshtastic channel index for alerts and commands (0-7, where 0 is the public primary channel)',
+              default: 1,
+              minimum: 0,
+              maximum: 7,
+            },
             log_level: {
               type: 'integer',
               default: 6,
@@ -892,35 +899,40 @@ module.exports = (app) => {
             heartbeat_interval: {
               type: 'integer',
               default: 60000,
-              title: 'Heartbeat inverval (milliseconds)',
+              title: 'Heartbeat interval (milliseconds)',
             },
           },
         },
-        communications: {
+        boat_info: {
           type: 'object',
-          title: 'Communications with Meshtastic',
+          title: 'Boat info command',
           properties: {
-            channel: {
-              type: 'integer',
-              title: 'Meshtastic channel index for alerts and commands (0-7, where 0 is the public primary channel)',
-              default: 1,
-              minimum: 0,
-              maximum: 7,
-            },
-            boat_info_battery: {
+            battery: {
               type: 'string',
-              title: 'Battery instance id used for the "Boat info" command reply (e.g. "house" or "0")',
+              title: 'Battery instance id used in the reply (e.g. "house" or "0")',
               default: 'house',
             },
+          },
+        },
+        ask: {
+          type: 'object',
+          title: 'Ask command',
+          properties: {
             anthropic_api_key: {
               type: 'string',
-              title: 'Anthropic (Claude) API key used for the "Ask" command. Leave empty to disable.',
+              title: 'Anthropic (Claude) API key. Leave empty to disable.',
               default: '',
             },
-            ask_model: {
+            model: {
               type: 'string',
-              title: 'Claude model used for the "Ask" command',
+              title: 'Claude model',
               default: 'claude-haiku-4-5',
+            },
+            add_notes: {
+              type: 'boolean',
+              title: 'Add Signal K notes for location answers',
+              description: 'If enabled, when Claude\'s answer refers to a specific place it stores a Signal K note with that place\'s name, coordinates, and the answer text (requires the Resources API / Freeboard). The mesh reply is then suffixed with "note added". Leave off if you do not have a resources provider.',
+              default: false,
             },
           },
         },

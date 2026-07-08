@@ -49,8 +49,7 @@ async function sendReply(device, app, text, destination, channel) {
 }
 
 function buildStatus(app, settings) {
-  const batteryId = (settings.communications && settings.communications.boat_info_battery)
-    || 'house';
+  const batteryId = (settings.boat_info && settings.boat_info.battery) || 'house';
 
   let header = 'Boat status';
   const name = readValue(app, 'name');

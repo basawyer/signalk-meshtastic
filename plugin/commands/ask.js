@@ -257,8 +257,10 @@ module.exports = {
     const match = msg.data.trim().match(regex);
     const question = match[1].trim();
     const destination = replyDestination(msg);
-    const apiKey = settings.communications && settings.communications.anthropic_api_key;
-    const model = settings.communications && settings.communications.ask_model;
+    const askSettings = settings.ask || {};
+    const apiKey = askSettings.anthropic_api_key;
+    const model = askSettings.model;
+    const addNotes = askSettings.add_notes === true;
 
     if (!apiKey) {
       return sendReply(device, app, ['Ask is not configured (missing Claude API key)'], destination, msg.channel);
@@ -275,7 +277,7 @@ module.exports = {
     }
 
     let { answer } = response;
-    if (validCoordinate(response.latitude, response.longitude)) {
+    if (addNotes && validCoordinate(response.latitude, response.longitude)) {
       const added = await addNote(
         app,
         response.name,

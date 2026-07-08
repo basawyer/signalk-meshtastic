@@ -9,7 +9,7 @@ const {
 
 describe('notification sending', () => {
   const settingsSendAlerts = {
-    communications: {
+    device: {
       channel: 1,
     },
   };
