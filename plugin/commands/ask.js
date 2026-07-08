@@ -11,8 +11,8 @@ const ELLIPSIS_BYTES = Buffer.byteLength(ELLIPSIS, 'utf8');
 const MAX_PAGES = 5;
 const DEFAULT_MODEL = 'claude-haiku-4-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
-// Name given to the Signal K waypoint created from a located answer.
-const WAYPOINT_NAME = 'askWaypoint';
+// Title given to the Signal K note created from a located answer.
+const NOTE_TITLE = 'askNote';
 
 const regex = /^ask\s+(.+)/i;
 
@@ -220,31 +220,24 @@ async function askClaudeWithLocationInMind(question, apiKey, model) {
   return result;
 }
 
-// Create a Signal K waypoint from a located answer. Returns true if the
-// waypoint was stored, false if it couldn't be (e.g. no resource provider).
-async function addWaypoint(app, latitude, longitude) {
+// Create a Signal K note from a located answer. Returns true if the
+// note was stored, false if it couldn't be (e.g. no resource provider).
+async function addNote(app, latitude, longitude) {
   if (!app || !app.resourcesApi || typeof app.resourcesApi.setResource !== 'function') {
     if (app && app.debug) {
-      app.debug('Ask: no resources API available, skipping waypoint');
+      app.debug('Ask: no resources API available, skipping note');
     }
     return false;
   }
   try {
-    await app.resourcesApi.setResource('waypoints', randomUUID(), {
-      name: WAYPOINT_NAME,
-      feature: {
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [longitude, latitude],
-        },
-        properties: {},
-      },
+    await app.resourcesApi.setResource('notes', randomUUID(), {
+      title: NOTE_TITLE,
+      position: { latitude, longitude },
     });
     return true;
   } catch (e) {
     if (app.error) {
-      app.error(`Ask failed to add waypoint: ${e.message}`);
+      app.error(`Ask failed to add note: ${e.message}`);
     }
     return false;
   }
@@ -278,9 +271,9 @@ module.exports = {
 
     let { answer } = response;
     if (validCoordinate(response.latitude, response.longitude)) {
-      const added = await addWaypoint(app, response.latitude, response.longitude);
+      const added = await addNote(app, response.latitude, response.longitude);
       if (added) {
-        answer = `${answer} - waypoint added`;
+        answer = `${answer} - note added`;
       }
     }
 

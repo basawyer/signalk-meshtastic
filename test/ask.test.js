@@ -27,14 +27,14 @@ function mockClaude(payload) {
 }
 
 function fakeApp(overrides = {}) {
-  const waypoints = [];
+  const notes = [];
   return {
     debug: () => {},
     error: () => {},
-    waypoints,
+    notes,
     resourcesApi: {
       setResource: (type, id, data) => {
-        waypoints.push({ type, id, data });
+        notes.push({ type, id, data });
         return Promise.resolve();
       },
     },
@@ -93,7 +93,7 @@ describe('ask command', () => {
     );
     assert.equal(device.sent.length, 1);
     assert.equal(device.sent[0].text, 'Bangkok');
-    assert.equal(app.waypoints.length, 0);
+    assert.equal(app.notes.length, 0);
   });
 
   it('falls back to raw text when the response is not JSON', async () => {
