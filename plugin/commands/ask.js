@@ -86,21 +86,27 @@ function splitIntoChunks(text, maxBytes) {
 // Turn an answer into an ordered list of message strings, each <= MAX_MESSAGE_BYTES.
 // Answers that fit in one message are returned unmarked; longer answers are
 // paginated with a " (i/n)" suffix and truncated with an ellipsis past MAX_PAGES.
-function paginate(text) {
+function paginate(app, text) {
+  app.debug("000000000000000");
   if (byteLength(text) <= MAX_MESSAGE_BYTES) {
     return [text];
   }
+  app.debug("aaaaaaaaaaaa");
 
   const contentBudget = MAX_MESSAGE_BYTES - MARKER_RESERVE_BYTES;
+  app.debug(contentBudget);
   let chunks = splitIntoChunks(text, contentBudget);
+  app.debug(chunks);
 
   if (chunks.length > MAX_PAGES) {
     chunks = chunks.slice(0, MAX_PAGES);
     const last = chunks[MAX_PAGES - 1];
+    app.debug(last);
     chunks[MAX_PAGES - 1] = truncateToBytes(last, contentBudget - ELLIPSIS_BYTES) + ELLIPSIS;
   }
 
   const total = chunks.length;
+  app.debug("bbbbbbbbbb");
   return chunks.map((chunk, index) => `${chunk} (${index + 1}/${total})`);
 }
 
@@ -143,7 +149,7 @@ function validCoordinate(latitude, longitude) {
     && longitude >= -180 && longitude <= 180;
 }
 
-async function askClaude(question, apiKey, model) {
+async function askClaudeWithLocationInMind(question, apiKey, model) {
   const prompt = buildPrompt(question);
 
   const response = await fetch(API_URL, {
@@ -249,7 +255,7 @@ module.exports = {
 
     let response;
     try {
-      response = await askClaude(question, apiKey, model);
+      response = await askClaudeWithLocationInMind(question, apiKey, model);
     } catch (err) {
       if (app && app.error) {
         app.error(`Ask command failed: ${err.message}`);
@@ -261,11 +267,14 @@ module.exports = {
     if (validCoordinate(response.latitude, response.longitude)) {
       const added = await addWaypoint(app, response.latitude, response.longitude);
       if (added) {
-        answer = `waypoint added\n${answer}`;
+        answer = `${answer} - waypoint added`;
       }
     }
 
-    const pages = paginate(answer);
+    const pages = paginate(app, answer);
+    if (app && app.debug) {
+      app.debug(`adding waypoint ${response.latitude}, ${response.longitude}`);
+    }
     // Send pages one at a time so they arrive in order on the mesh.
     let result;
     for (let i = 0; i < pages.length; i += 1) {
