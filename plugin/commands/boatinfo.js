@@ -92,7 +92,8 @@ function buildStatus(app, settings) {
 
 module.exports = {
   example: 'Boat info',
-  accept: (msg) => (msg.data.trim().toLowerCase() === 'boat info'),
+  // Only accept on the configured channel, never in direct messages.
+  accept: (msg) => (msg.type !== 'direct' && msg.data.trim().toLowerCase() === 'boat info'),
   handle: (msg, settings, device, app) => {
     const status = buildStatus(app, settings);
     return device.sendText(status, replyDestination(msg), true, msg.channel);

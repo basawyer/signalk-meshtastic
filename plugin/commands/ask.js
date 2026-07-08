@@ -150,7 +150,9 @@ async function askClaude(question, apiKey, model) {
 
 module.exports = {
   example: 'Ask <question>',
-  accept: (msg) => regex.test(msg.data.trim()),
+  // Only accept on the configured channel, never in direct messages, so that
+  // strangers can't DM the boat node and burn Claude API tokens.
+  accept: (msg) => msg.type !== 'direct' && regex.test(msg.data.trim()),
   handle: async (msg, settings, device, app) => {
     const match = msg.data.trim().match(regex);
     const question = match[1].trim();

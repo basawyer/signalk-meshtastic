@@ -33,11 +33,16 @@ describe('ask command', () => {
     assert.equal(ask.accept({ data: 'ask' }), false);
   });
 
+  it('rejects direct messages so DMs cannot spend tokens', () => {
+    assert.equal(ask.accept({ data: 'ask hello', type: 'direct' }), false);
+    assert.equal(ask.accept({ data: 'ask hello', type: 'broadcast' }), true);
+  });
+
   it('replies with a config error when no API key is set', async () => {
     const device = fakeDevice();
     await ask.handle(
       {
-        data: 'ask hello', type: 'direct', from: 'node1', channel: 1,
+        data: 'ask hello', type: 'broadcast', channel: 1,
       },
       { communications: {} },
       device,
@@ -45,7 +50,7 @@ describe('ask command', () => {
     );
     assert.equal(device.sent.length, 1);
     assert.match(device.sent[0].text, /not configured/i);
-    assert.equal(device.sent[0].destination, 'node1');
+    assert.equal(device.sent[0].destination, 'broadcast');
   });
 
   it('sends a short answer as a single unmarked message', async () => {
@@ -56,7 +61,7 @@ describe('ask command', () => {
     const device = fakeDevice();
     await ask.handle(
       {
-        data: 'ask capital of thailand', type: 'direct', from: 'node1', channel: 1,
+        data: 'ask capital of thailand', type: 'broadcast', channel: 1,
       },
       { communications: { anthropic_api_key: 'key' } },
       device,
@@ -75,7 +80,7 @@ describe('ask command', () => {
     const device = fakeDevice();
     await ask.handle(
       {
-        data: 'ask something', type: 'direct', from: 'node1', channel: 1,
+        data: 'ask something', type: 'broadcast', channel: 1,
       },
       { communications: { anthropic_api_key: 'key' } },
       device,
@@ -89,7 +94,7 @@ describe('ask command', () => {
         'each page must fit in 200 bytes',
       );
       assert.match(message.text, new RegExp(`\\(${index + 1}/${total}\\)$`));
-      assert.equal(message.destination, 'node1');
+      assert.equal(message.destination, 'broadcast');
     });
   });
 
@@ -102,7 +107,7 @@ describe('ask command', () => {
     const device = fakeDevice();
     await ask.handle(
       {
-        data: 'ask something', type: 'direct', from: 'node1', channel: 1,
+        data: 'ask something', type: 'broadcast', channel: 1,
       },
       { communications: { anthropic_api_key: 'key' } },
       device,
