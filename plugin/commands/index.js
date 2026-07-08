@@ -1,5 +1,4 @@
 exports.ping = require('./ping');
-exports.waypoint = require('./waypoint');
 exports.boatinfo = require('./boatinfo');
 exports.ask = require('./ask');
 

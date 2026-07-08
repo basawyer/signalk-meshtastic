@@ -2,7 +2,6 @@ const { readFile, writeFile } = require('fs/promises');
 const { join } = require('path');
 
 const commands = require('./commands/index');
-const { sendMOB } = require('./waypoint');
 const { sendNotification, sendReminders } = require('./notifications');
 
 if (!global.crypto) {
@@ -809,10 +808,6 @@ module.exports = (app) => {
                 }
                 if (v.path.indexOf('notifications.') === 0) {
                   sendNotification(v.path, v.value, episodes, settings, device, app);
-                  if (v.path.indexOf('notifications.mob.') === 0) {
-                    // This is a notification about a MOB beacon, create waypoint
-                    sendMOB(v.path, v.value, app, device, create, Protobuf);
-                  }
                 }
               });
             });

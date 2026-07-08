@@ -34,12 +34,10 @@ In production use on several boats.
   * Note: Serial transport support was removed in 1.3.0 to comply with [postinstall deprecation](https://demo.signalk.org/documentation/Developing/Plugins/Publishing_to_The_AppStore.html#important-avoid-install-time-scripts)
 * Update Meshtastic node position from Signal K GNSS position
 * Send Signal K alerts as Meshtastic text messages
- * MOB alerts (for example from [signalk-mob-notifier](https://github.com/meri-imperiumi/signalk-mob-notifier)) also send a waypoint to the MOB beacon
  * Alerts are broadcast on the configured Meshtastic channel (`channel` setting, defaults to `1`; set to `0` for the public primary channel)
 * Control Signal K with Meshtastic messages (via a direct message to the boat node or on the configured channel):
- * Share Meshtastic waypoints for AIS targets (_"Waypoint DH8613"_)
  * Query live vessel status (_"Boat info"_) — only on the configured channel, not via direct message
- * Ask Claude a question and get a succinct answer (_"Ask what is the capital of Thailand"_), requires an Anthropic API key in the settings; only on the configured channel, not via direct message, so DMs can't spend your API tokens. When the answer refers to a specific location, an `askWaypoint` waypoint is stored in Signal K and the reply is prefixed with `waypoint added`
+ * Ask Claude a question and get a succinct answer (_"Ask what is the capital of Thailand"_), requires an Anthropic API key in the settings; only on the configured channel, not via direct message, so DMs can't spend your API tokens. When the answer refers to a specific location, an `askNote` note is stored in Signal K and the reply is suffixed with `note added`
 * Associate Meshtastic nodes with other (AIS) vessels based on the `Some node name DE <callsign>` pattern
 
 ## Planned features
