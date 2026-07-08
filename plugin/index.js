@@ -561,6 +561,13 @@ module.exports = (app) => {
             setConnectionStatus();
           }),
           device.events.onMessagePacket.subscribe((message) => {
+            // The Meshtastic library locally echoes our own outgoing messages
+            // back through this event (sendText uses echoResponse=true). Ignore
+            // anything from our own node so we don't process our own replies as
+            // commands.
+            if (nodes[message.from] && nodes[message.from].thisNode) {
+              return;
+            }
             const isDirect = message.type === 'direct';
             const commandChannel = settings.communications
               && Number.isInteger(settings.communications.channel)
@@ -578,12 +585,13 @@ module.exports = (app) => {
               }
               command.handle(message, settings, device, app, create, Protobuf)
                 .then(() => {
-                  app.debug(`Message "${message.data}" handled by command ${command}`);
+                  app.debug(`Message "${message.data}" handled by command ${cmd}`);
                 })
                 .catch((err) => {
-                  app.debug(`Message "${message.data}" failed by command ${command}`);
-                  app.debug(err.message);
-                  app.error(err.message);
+                  const reason = (err && err.message)
+                    || (err && Number.isInteger(err.error) ? `routing error ${err.error}` : String(err));
+                  app.debug(`Message "${message.data}" failed by command ${cmd}: ${reason}`);
+                  app.error(`Command ${cmd} failed: ${reason}`);
                 });
             });
           }),

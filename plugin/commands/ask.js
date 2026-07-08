@@ -86,28 +86,41 @@ function splitIntoChunks(text, maxBytes) {
 // Turn an answer into an ordered list of message strings, each <= MAX_MESSAGE_BYTES.
 // Answers that fit in one message are returned unmarked; longer answers are
 // paginated with a " (i/n)" suffix and truncated with an ellipsis past MAX_PAGES.
-function paginate(app, text) {
-  app.debug("000000000000000");
+function paginate(text) {
   if (byteLength(text) <= MAX_MESSAGE_BYTES) {
     return [text];
   }
-  app.debug("aaaaaaaaaaaa");
 
   const contentBudget = MAX_MESSAGE_BYTES - MARKER_RESERVE_BYTES;
-  app.debug(contentBudget);
   let chunks = splitIntoChunks(text, contentBudget);
-  app.debug(chunks);
 
   if (chunks.length > MAX_PAGES) {
     chunks = chunks.slice(0, MAX_PAGES);
     const last = chunks[MAX_PAGES - 1];
-    app.debug(last);
     chunks[MAX_PAGES - 1] = truncateToBytes(last, contentBudget - ELLIPSIS_BYTES) + ELLIPSIS;
   }
 
   const total = chunks.length;
-  app.debug("bbbbbbbbbb");
   return chunks.map((chunk, index) => `${chunk} (${index + 1}/${total})`);
+}
+
+// Send one or more pages, one at a time so they arrive in order. Broadcast
+// replies on the mesh are not reliably ACKed, so a send that never gets an ACK
+// is treated as best-effort (logged, not thrown) rather than failing the whole
+// command — mirroring how alert broadcasts are handled.
+async function sendReply(device, app, pages, destination, channel) {
+  for (let i = 0; i < pages.length; i += 1) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      await device.sendText(pages[i], destination, true, channel);
+    } catch (e) {
+      const reason = (e && e.message)
+        || (e && Number.isInteger(e.error) ? `routing error ${e.error}` : undefined);
+      if (app && app.debug) {
+        app.debug(`Ask reply page ${i + 1}/${pages.length} not acked${reason ? `: ${reason}` : ''}`);
+      }
+    }
+  }
 }
 
 function buildPrompt(question) {
@@ -250,7 +263,7 @@ module.exports = {
     const model = settings.communications && settings.communications.ask_model;
 
     if (!apiKey) {
-      return device.sendText('Ask is not configured (missing Claude API key)', destination, true, msg.channel);
+      return sendReply(device, app, ['Ask is not configured (missing Claude API key)'], destination, msg.channel);
     }
 
     let response;
@@ -260,7 +273,7 @@ module.exports = {
       if (app && app.error) {
         app.error(`Ask command failed: ${err.message}`);
       }
-      return device.sendText('Unable to reach Claude right now', destination, true, msg.channel);
+      return sendReply(device, app, ['Unable to reach Claude right now'], destination, msg.channel);
     }
 
     let { answer } = response;
@@ -271,16 +284,6 @@ module.exports = {
       }
     }
 
-    const pages = paginate(app, answer);
-    if (app && app.debug) {
-      app.debug(`adding waypoint ${response.latitude}, ${response.longitude}`);
-    }
-    // Send pages one at a time so they arrive in order on the mesh.
-    let result;
-    for (let i = 0; i < pages.length; i += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      result = await device.sendText(pages[i], destination, true, msg.channel);
-    }
-    return result;
+    return sendReply(device, app, paginate(answer), destination, msg.channel);
   },
 };

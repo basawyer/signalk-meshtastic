@@ -33,6 +33,21 @@ function replyDestination(message) {
   return 'broadcast';
 }
 
+// Broadcast replies on the mesh are not reliably ACKed, so a send that never
+// gets an ACK is treated as best-effort (logged, not thrown) rather than
+// failing the command — mirroring how alert broadcasts are handled.
+async function sendReply(device, app, text, destination, channel) {
+  try {
+    await device.sendText(text, destination, true, channel);
+  } catch (e) {
+    const reason = (e && e.message)
+      || (e && Number.isInteger(e.error) ? `routing error ${e.error}` : undefined);
+    if (app && app.debug) {
+      app.debug(`Boat info reply not acked${reason ? `: ${reason}` : ''}`);
+    }
+  }
+}
+
 function buildStatus(app, settings) {
   const batteryId = (settings.communications && settings.communications.boat_info_battery)
     || 'house';
@@ -96,6 +111,6 @@ module.exports = {
   accept: (msg) => (msg.type !== 'direct' && msg.data.trim().toLowerCase() === 'boat info'),
   handle: (msg, settings, device, app) => {
     const status = buildStatus(app, settings);
-    return device.sendText(status, replyDestination(msg), true, msg.channel);
+    return sendReply(device, app, status, replyDestination(msg), msg.channel);
   },
 };

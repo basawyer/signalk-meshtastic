@@ -124,7 +124,7 @@ describe('ask command', () => {
       app,
     );
     assert.equal(device.sent.length, 1);
-    assert.equal(device.sent[0].text, 'waypoint added\nBangkok');
+    assert.equal(device.sent[0].text, 'Bangkok - waypoint added');
     assert.equal(app.waypoints.length, 1);
     const [waypoint] = app.waypoints;
     assert.equal(waypoint.type, 'waypoints');
