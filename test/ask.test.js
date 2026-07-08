@@ -48,7 +48,25 @@ describe('ask command', () => {
     assert.equal(device.sent[0].destination, 'node1');
   });
 
-  it('sends the Claude answer and truncates it to 200 bytes', async () => {
+  it('sends a short answer as a single unmarked message', async () => {
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({ content: [{ type: 'text', text: 'Bangkok' }] }),
+    });
+    const device = fakeDevice();
+    await ask.handle(
+      {
+        data: 'ask capital of thailand', type: 'direct', from: 'node1', channel: 1,
+      },
+      { communications: { anthropic_api_key: 'key' } },
+      device,
+      { error: () => {} },
+    );
+    assert.equal(device.sent.length, 1);
+    assert.equal(device.sent[0].text, 'Bangkok');
+  });
+
+  it('paginates an answer that is over 200 bytes', async () => {
     const longAnswer = 'a'.repeat(500);
     global.fetch = async () => ({
       ok: true,
@@ -63,8 +81,38 @@ describe('ask command', () => {
       device,
       { error: () => {} },
     );
-    assert.equal(device.sent.length, 1);
-    assert.equal(Buffer.from(device.sent[0].text, 'utf8').length, 200);
+    assert.ok(device.sent.length > 1, 'should send multiple pages');
+    const total = device.sent.length;
+    device.sent.forEach((message, index) => {
+      assert.ok(
+        Buffer.from(message.text, 'utf8').length <= 200,
+        'each page must fit in 200 bytes',
+      );
+      assert.match(message.text, new RegExp(`\\(${index + 1}/${total}\\)$`));
+      assert.equal(message.destination, 'node1');
+    });
+  });
+
+  it('caps very long answers at 5 pages and marks truncation', async () => {
+    const hugeAnswer = 'a'.repeat(5000);
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({ content: [{ type: 'text', text: hugeAnswer }] }),
+    });
+    const device = fakeDevice();
+    await ask.handle(
+      {
+        data: 'ask something', type: 'direct', from: 'node1', channel: 1,
+      },
+      { communications: { anthropic_api_key: 'key' } },
+      device,
+      { error: () => {} },
+    );
+    assert.equal(device.sent.length, 5);
+    device.sent.forEach((message) => {
+      assert.ok(Buffer.from(message.text, 'utf8').length <= 200);
+    });
+    assert.match(device.sent[4].text, /…/);
   });
 
   it('reports a friendly error when the API call fails', async () => {
