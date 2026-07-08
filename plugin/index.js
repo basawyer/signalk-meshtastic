@@ -195,7 +195,7 @@ module.exports = (app) => {
   const nodes = {};
   let reminderInterval;
   plugin.id = 'signalk-meshtastic';
-  plugin.name = 'Meshtastic';
+  plugin.name = 'Meshtastic (by basawyer)';
   plugin.description = 'Connect Signal K with the Meshtastic LoRa mesh network';
 
   // Workaround for loading ESM library

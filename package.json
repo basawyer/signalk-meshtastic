@@ -24,7 +24,7 @@
   "signalk-plugin-enabled-by-default": false,
   "signalk": {
     "appIcon": "./doc/mpwrd.png",
-    "displayName": "Meshtastic Integration",
+    "displayName": "Meshtastic (by basawyer)",
     "screenshots": [
       "./doc/meshtastic-bequia.png",
       "./doc/config-crew-role.png",
