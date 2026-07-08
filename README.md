@@ -37,7 +37,7 @@ In production use on several boats.
  * Alerts are broadcast on the configured Meshtastic channel (`channel` setting, defaults to `1`; set to `0` for the public primary channel)
 * Control Signal K with Meshtastic messages (via a direct message to the boat node or on the configured channel):
  * Query live vessel status (_"Boat info"_) — only on the configured channel, not via direct message
- * Ask Claude a question and get a succinct answer (_"Ask what is the capital of Thailand"_), requires an Anthropic API key in the settings; only on the configured channel, not via direct message, so DMs can't spend your API tokens. When the answer refers to a specific location, an `askWaypoint` waypoint is stored in Signal K and the reply is suffixed with `waypoint added`
+ * Ask Claude a question and get a succinct answer (_"Ask what is the capital of Thailand"_), requires an Anthropic API key in the settings; only on the configured channel, not via direct message, so DMs can't spend your API tokens. When the answer refers to a specific location, a Signal K note is stored (named for that place, with the answer as its text) and the reply is suffixed with `note added`
 * Associate Meshtastic nodes with other (AIS) vessels based on the `Some node name DE <callsign>` pattern
 
 ## Planned features

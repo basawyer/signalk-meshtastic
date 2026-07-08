@@ -27,14 +27,14 @@ function mockClaude(payload) {
 }
 
 function fakeApp(overrides = {}) {
-  const waypoints = [];
+  const notes = [];
   return {
     debug: () => {},
     error: () => {},
-    waypoints,
+    notes,
     resourcesApi: {
       setResource: (type, id, data) => {
-        waypoints.push({ type, id, data });
+        notes.push({ type, id, data });
         return Promise.resolve();
       },
     },
@@ -93,7 +93,7 @@ describe('ask command', () => {
     );
     assert.equal(device.sent.length, 1);
     assert.equal(device.sent[0].text, 'Bangkok');
-    assert.equal(app.waypoints.length, 0);
+    assert.equal(app.notes.length, 0);
   });
 
   it('falls back to raw text when the response is not JSON', async () => {
@@ -111,8 +111,10 @@ describe('ask command', () => {
     assert.equal(device.sent[0].text, 'Bangkok is the capital');
   });
 
-  it('adds a Signal K waypoint and prepends the marker for a located answer', async () => {
-    global.fetch = mockClaude({ answer: 'Bangkok', latitude: 13.7563, longitude: 100.5018 });
+  it('adds a Signal K note with name, answer text, and marker for a located answer', async () => {
+    global.fetch = mockClaude({
+      answer: 'Bangkok', name: 'Bangkok', latitude: 13.7563, longitude: 100.5018,
+    });
     const device = fakeDevice();
     const app = fakeApp();
     await ask.handle(
@@ -124,18 +126,32 @@ describe('ask command', () => {
       app,
     );
     assert.equal(device.sent.length, 1);
-    assert.equal(device.sent[0].text, 'Bangkok - waypoint added');
-    assert.equal(app.waypoints.length, 1);
-    const [waypoint] = app.waypoints;
-    assert.equal(waypoint.type, 'waypoints');
-    assert.equal(waypoint.data.name, 'askWaypoint');
-    assert.deepEqual(waypoint.data.feature.geometry, {
-      type: 'Point',
-      coordinates: [100.5018, 13.7563],
-    });
+    assert.equal(device.sent[0].text, 'Bangkok - note added');
+    assert.equal(app.notes.length, 1);
+    const [note] = app.notes;
+    assert.equal(note.type, 'notes');
+    assert.equal(note.data.title, 'Bangkok');
+    assert.equal(note.data.description, 'Bangkok');
+    assert.deepEqual(note.data.position, { latitude: 13.7563, longitude: 100.5018 });
   });
 
-  it('ignores out-of-range coordinates and does not add a waypoint', async () => {
+  it('falls back to a default note title when name is missing', async () => {
+    global.fetch = mockClaude({ answer: 'Bangkok', latitude: 13.7563, longitude: 100.5018 });
+    const device = fakeDevice();
+    const app = fakeApp();
+    await ask.handle(
+      {
+        data: 'ask capital of thailand', type: 'broadcast', channel: 1,
+      },
+      { communications: { anthropic_api_key: 'key' } },
+      device,
+      app,
+    );
+    assert.equal(device.sent[0].text, 'Bangkok - note added');
+    assert.equal(app.notes[0].data.title, 'Ask note');
+  });
+
+  it('ignores out-of-range coordinates and does not add a note', async () => {
     global.fetch = mockClaude({ answer: 'Somewhere', latitude: 999, longitude: 100 });
     const device = fakeDevice();
     const app = fakeApp();
@@ -148,11 +164,13 @@ describe('ask command', () => {
       app,
     );
     assert.equal(device.sent[0].text, 'Somewhere');
-    assert.equal(app.waypoints.length, 0);
+    assert.equal(app.notes.length, 0);
   });
 
-  it('does not prepend the marker when waypoint storage fails', async () => {
-    global.fetch = mockClaude({ answer: 'Bangkok', latitude: 13.7563, longitude: 100.5018 });
+  it('does not prepend the marker when note storage fails', async () => {
+    global.fetch = mockClaude({
+      answer: 'Bangkok', name: 'Bangkok', latitude: 13.7563, longitude: 100.5018,
+    });
     const device = fakeDevice();
     const app = fakeApp({
       resourcesApi: {

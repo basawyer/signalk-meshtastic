@@ -11,8 +11,8 @@ const ELLIPSIS_BYTES = Buffer.byteLength(ELLIPSIS, 'utf8');
 const MAX_PAGES = 5;
 const DEFAULT_MODEL = 'claude-haiku-4-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
-// Name given to the Signal K waypoint created from a located answer.
-const WAYPOINT_NAME = 'askWaypoint';
+// Fallback title when Claude returns coordinates but no usable name.
+const FALLBACK_NOTE_TITLE = 'Ask note';
 
 const regex = /^ask\s+(.+)/i;
 
@@ -130,10 +130,11 @@ function buildPrompt(question) {
     + 'an "answer" field containing a concise, plain-text answer to the question '
     + '(no formatting, get straight to the point). If the answer refers to a '
     + 'specific geographic location (a place, city, port, landmark, etc.), also '
-    + 'include numeric "latitude" and "longitude" fields with that location\'s '
+    + 'include a short "name" field for that location (suitable as a map label), '
+    + 'plus numeric "latitude" and "longitude" fields with that location\'s '
     + 'coordinates in decimal degrees (latitude between -90 and 90, longitude '
-    + 'between -180 and 180). If there is no specific location, omit those two '
-    + `fields. Question: ${question}`;
+    + 'between -180 and 180). If there is no specific location, omit name, '
+    + `latitude, and longitude. Question: ${question}`;
 }
 
 // Best-effort JSON extraction: parse the whole string, or fall back to the
@@ -216,35 +217,32 @@ async function askClaudeWithLocationInMind(question, apiKey, model) {
   if (validCoordinate(latitude, longitude)) {
     result.latitude = latitude;
     result.longitude = longitude;
+    if (typeof parsed.name === 'string' && parsed.name.trim()) {
+      result.name = parsed.name.replace(/\s+/g, ' ').trim();
+    }
   }
   return result;
 }
 
-// Create a Signal K waypoint from a located answer. Returns true if the
-// waypoint was stored, false if it couldn't be (e.g. no resource provider).
-async function addWaypoint(app, latitude, longitude) {
+// Create a Signal K note from a located answer. Returns true if the
+// note was stored, false if it couldn't be (e.g. no resource provider).
+async function addNote(app, title, answer, latitude, longitude) {
   if (!app || !app.resourcesApi || typeof app.resourcesApi.setResource !== 'function') {
     if (app && app.debug) {
-      app.debug('Ask: no resources API available, skipping waypoint');
+      app.debug('Ask: no resources API available, skipping note');
     }
     return false;
   }
   try {
-    await app.resourcesApi.setResource('waypoints', randomUUID(), {
-      name: WAYPOINT_NAME,
-      feature: {
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [longitude, latitude],
-        },
-        properties: {},
-      },
+    await app.resourcesApi.setResource('notes', randomUUID(), {
+      title: title || FALLBACK_NOTE_TITLE,
+      description: answer,
+      position: { latitude, longitude },
     });
     return true;
   } catch (e) {
     if (app.error) {
-      app.error(`Ask failed to add waypoint: ${e.message}`);
+      app.error(`Ask failed to add note: ${e.message}`);
     }
     return false;
   }
@@ -278,9 +276,15 @@ module.exports = {
 
     let { answer } = response;
     if (validCoordinate(response.latitude, response.longitude)) {
-      const added = await addWaypoint(app, response.latitude, response.longitude);
+      const added = await addNote(
+        app,
+        response.name,
+        answer,
+        response.latitude,
+        response.longitude,
+      );
       if (added) {
-        answer = `${answer} - waypoint added`;
+        answer = `${answer} - note added`;
       }
     }
 
