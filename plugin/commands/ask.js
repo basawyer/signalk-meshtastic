@@ -1,3 +1,5 @@
+const { randomUUID } = require('node:crypto');
+
 // Maximum size of a single Meshtastic text message we send.
 const MAX_MESSAGE_BYTES = 200;
 // Bytes reserved on each page for the " (i/n)" pagination marker.
@@ -9,6 +11,8 @@ const ELLIPSIS_BYTES = Buffer.byteLength(ELLIPSIS, 'utf8');
 const MAX_PAGES = 5;
 const DEFAULT_MODEL = 'claude-haiku-4-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
+// Name given to the Signal K waypoint created from a located answer.
+const WAYPOINT_NAME = 'askWaypoint';
 
 const regex = /^ask\s+(.+)/i;
 
@@ -100,11 +104,47 @@ function paginate(text) {
   return chunks.map((chunk, index) => `${chunk} (${index + 1}/${total})`);
 }
 
+function buildPrompt(question) {
+  return 'You are answering a question relayed over a low-bandwidth radio mesh '
+    + 'network. Respond with a single minified JSON object and nothing else: no '
+    + 'markdown, no code fences, and no text outside the JSON. The JSON must have '
+    + 'an "answer" field containing a concise, plain-text answer to the question '
+    + '(no formatting, get straight to the point). If the answer refers to a '
+    + 'specific geographic location (a place, city, port, landmark, etc.), also '
+    + 'include numeric "latitude" and "longitude" fields with that location\'s '
+    + 'coordinates in decimal degrees (latitude between -90 and 90, longitude '
+    + 'between -180 and 180). If there is no specific location, omit those two '
+    + `fields. Question: ${question}`;
+}
+
+// Best-effort JSON extraction: parse the whole string, or fall back to the
+// first {...} block if the model wrapped it in extra prose or code fences.
+function extractJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start !== -1 && end > start) {
+      try {
+        return JSON.parse(text.slice(start, end + 1));
+      } catch (e2) {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
+function validCoordinate(latitude, longitude) {
+  return Number.isFinite(latitude)
+    && Number.isFinite(longitude)
+    && latitude >= -90 && latitude <= 90
+    && longitude >= -180 && longitude <= 180;
+}
+
 async function askClaude(question, apiKey, model) {
-  const prompt = 'You are answering a question relayed over a low-bandwidth radio '
-    + 'mesh network. Reply with a concise, plain-text answer only: no markdown '
-    + 'and no formatting. Get straight to the answer and keep it brief. '
-    + `Question: ${question}`;
+  const prompt = buildPrompt(question);
 
   const response = await fetch(API_URL, {
     method: 'POST',
@@ -115,7 +155,7 @@ async function askClaude(question, apiKey, model) {
     },
     body: JSON.stringify({
       model: model || DEFAULT_MODEL,
-      max_tokens: 300,
+      max_tokens: 400,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -138,14 +178,57 @@ async function askClaude(question, apiKey, model) {
     .filter((block) => block.type === 'text')
     .map((block) => block.text)
     .join(' ')
-    .replace(/\s+/g, ' ')
     .trim();
 
   if (!text) {
     throw new Error('Claude returned an empty response');
   }
 
-  return text;
+  const parsed = extractJson(text);
+  // Fall back to the raw text if the model didn't return usable JSON, so the
+  // user still gets an answer rather than a generic error.
+  if (!parsed || typeof parsed.answer !== 'string' || !parsed.answer.trim()) {
+    return { answer: text.replace(/\s+/g, ' ').trim() };
+  }
+
+  const result = { answer: parsed.answer.replace(/\s+/g, ' ').trim() };
+  const latitude = Number(parsed.latitude);
+  const longitude = Number(parsed.longitude);
+  if (validCoordinate(latitude, longitude)) {
+    result.latitude = latitude;
+    result.longitude = longitude;
+  }
+  return result;
+}
+
+// Create a Signal K waypoint from a located answer. Returns true if the
+// waypoint was stored, false if it couldn't be (e.g. no resource provider).
+async function addWaypoint(app, latitude, longitude) {
+  if (!app || !app.resourcesApi || typeof app.resourcesApi.setResource !== 'function') {
+    if (app && app.debug) {
+      app.debug('Ask: no resources API available, skipping waypoint');
+    }
+    return false;
+  }
+  try {
+    await app.resourcesApi.setResource('waypoints', randomUUID(), {
+      name: WAYPOINT_NAME,
+      feature: {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [longitude, latitude],
+        },
+        properties: {},
+      },
+    });
+    return true;
+  } catch (e) {
+    if (app.error) {
+      app.error(`Ask failed to add waypoint: ${e.message}`);
+    }
+    return false;
+  }
 }
 
 module.exports = {
@@ -164,14 +247,22 @@ module.exports = {
       return device.sendText('Ask is not configured (missing Claude API key)', destination, true, msg.channel);
     }
 
-    let answer;
+    let response;
     try {
-      answer = await askClaude(question, apiKey, model);
+      response = await askClaude(question, apiKey, model);
     } catch (err) {
       if (app && app.error) {
         app.error(`Ask command failed: ${err.message}`);
       }
       return device.sendText('Unable to reach Claude right now', destination, true, msg.channel);
+    }
+
+    let { answer } = response;
+    if (validCoordinate(response.latitude, response.longitude)) {
+      const added = await addWaypoint(app, response.latitude, response.longitude);
+      if (added) {
+        answer = `waypoint added\n${answer}`;
+      }
     }
 
     const pages = paginate(answer);

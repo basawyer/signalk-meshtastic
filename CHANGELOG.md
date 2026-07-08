@@ -5,7 +5,7 @@
 - `channel` setting: the Meshtastic channel index (0-7, default `1`, `0` = public primary) used for both broadcasting alerts and accepting commands
 - `Boat info` text command: reply with live vessel data (battery, depth, wind, water temp, SOG) when received on the configured channel
 - `boat_info_battery` setting to pick which `electrical.batteries.<id>` instance the `Boat info` reply reports
-- `Ask <question>` text command: forward the question to Claude and reply with a succinct plain-text answer, paginated across multiple messages (each <= 200 bytes, with `(i/n)` markers) when the answer is longer, up to a 5-message cap
+- `Ask <question>` text command: forward the question to Claude and reply with a succinct plain-text answer, paginated across multiple messages (each <= 200 bytes, with `(i/n)` markers) when the answer is longer, up to a 5-message cap. Claude returns structured JSON; when the answer references a specific location, an `askWaypoint` waypoint is stored in Signal K (via the Resources API) and the reply is prefixed with `waypoint added`
 - `anthropic_api_key` and `ask_model` settings to configure the Claude API used by the `Ask` command
 
 ### Changed

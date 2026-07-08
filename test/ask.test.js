@@ -16,6 +16,32 @@ function fakeDevice() {
   };
 }
 
+// Build a fake fetch that returns the given payload as Claude's text block.
+// Objects are JSON-stringified; strings are returned verbatim.
+function mockClaude(payload) {
+  const text = typeof payload === 'string' ? payload : JSON.stringify(payload);
+  return async () => ({
+    ok: true,
+    json: async () => ({ content: [{ type: 'text', text }] }),
+  });
+}
+
+function fakeApp(overrides = {}) {
+  const waypoints = [];
+  return {
+    debug: () => {},
+    error: () => {},
+    waypoints,
+    resourcesApi: {
+      setResource: (type, id, data) => {
+        waypoints.push({ type, id, data });
+        return Promise.resolve();
+      },
+    },
+    ...overrides,
+  };
+}
+
 describe('ask command', () => {
   const originalFetch = global.fetch;
   afterEach(() => {
@@ -54,10 +80,24 @@ describe('ask command', () => {
   });
 
   it('sends a short answer as a single unmarked message', async () => {
-    global.fetch = async () => ({
-      ok: true,
-      json: async () => ({ content: [{ type: 'text', text: 'Bangkok' }] }),
-    });
+    global.fetch = mockClaude({ answer: 'Bangkok' });
+    const device = fakeDevice();
+    const app = fakeApp();
+    await ask.handle(
+      {
+        data: 'ask capital of thailand', type: 'broadcast', channel: 1,
+      },
+      { communications: { anthropic_api_key: 'key' } },
+      device,
+      app,
+    );
+    assert.equal(device.sent.length, 1);
+    assert.equal(device.sent[0].text, 'Bangkok');
+    assert.equal(app.waypoints.length, 0);
+  });
+
+  it('falls back to raw text when the response is not JSON', async () => {
+    global.fetch = mockClaude('Bangkok is the capital');
     const device = fakeDevice();
     await ask.handle(
       {
@@ -65,18 +105,71 @@ describe('ask command', () => {
       },
       { communications: { anthropic_api_key: 'key' } },
       device,
-      { error: () => {} },
+      fakeApp(),
     );
     assert.equal(device.sent.length, 1);
+    assert.equal(device.sent[0].text, 'Bangkok is the capital');
+  });
+
+  it('adds a Signal K waypoint and prepends the marker for a located answer', async () => {
+    global.fetch = mockClaude({ answer: 'Bangkok', latitude: 13.7563, longitude: 100.5018 });
+    const device = fakeDevice();
+    const app = fakeApp();
+    await ask.handle(
+      {
+        data: 'ask capital of thailand', type: 'broadcast', channel: 1,
+      },
+      { communications: { anthropic_api_key: 'key' } },
+      device,
+      app,
+    );
+    assert.equal(device.sent.length, 1);
+    assert.equal(device.sent[0].text, 'waypoint added\nBangkok');
+    assert.equal(app.waypoints.length, 1);
+    const [waypoint] = app.waypoints;
+    assert.equal(waypoint.type, 'waypoints');
+    assert.equal(waypoint.data.name, 'askWaypoint');
+    // GeoJSON coordinates are [longitude, latitude]
+    assert.deepEqual(waypoint.data.feature.geometry.coordinates, [100.5018, 13.7563]);
+  });
+
+  it('ignores out-of-range coordinates and does not add a waypoint', async () => {
+    global.fetch = mockClaude({ answer: 'Somewhere', latitude: 999, longitude: 100 });
+    const device = fakeDevice();
+    const app = fakeApp();
+    await ask.handle(
+      {
+        data: 'ask something', type: 'broadcast', channel: 1,
+      },
+      { communications: { anthropic_api_key: 'key' } },
+      device,
+      app,
+    );
+    assert.equal(device.sent[0].text, 'Somewhere');
+    assert.equal(app.waypoints.length, 0);
+  });
+
+  it('does not prepend the marker when waypoint storage fails', async () => {
+    global.fetch = mockClaude({ answer: 'Bangkok', latitude: 13.7563, longitude: 100.5018 });
+    const device = fakeDevice();
+    const app = fakeApp({
+      resourcesApi: {
+        setResource: () => Promise.reject(new Error('no provider')),
+      },
+    });
+    await ask.handle(
+      {
+        data: 'ask capital of thailand', type: 'broadcast', channel: 1,
+      },
+      { communications: { anthropic_api_key: 'key' } },
+      device,
+      app,
+    );
     assert.equal(device.sent[0].text, 'Bangkok');
   });
 
   it('paginates an answer that is over 200 bytes', async () => {
-    const longAnswer = 'a'.repeat(500);
-    global.fetch = async () => ({
-      ok: true,
-      json: async () => ({ content: [{ type: 'text', text: longAnswer }] }),
-    });
+    global.fetch = mockClaude({ answer: 'a'.repeat(500) });
     const device = fakeDevice();
     await ask.handle(
       {
@@ -84,7 +177,7 @@ describe('ask command', () => {
       },
       { communications: { anthropic_api_key: 'key' } },
       device,
-      { error: () => {} },
+      fakeApp(),
     );
     assert.ok(device.sent.length > 1, 'should send multiple pages');
     const total = device.sent.length;
@@ -99,11 +192,7 @@ describe('ask command', () => {
   });
 
   it('caps very long answers at 5 pages and marks truncation', async () => {
-    const hugeAnswer = 'a'.repeat(5000);
-    global.fetch = async () => ({
-      ok: true,
-      json: async () => ({ content: [{ type: 'text', text: hugeAnswer }] }),
-    });
+    global.fetch = mockClaude({ answer: 'a'.repeat(5000) });
     const device = fakeDevice();
     await ask.handle(
       {
@@ -111,7 +200,7 @@ describe('ask command', () => {
       },
       { communications: { anthropic_api_key: 'key' } },
       device,
-      { error: () => {} },
+      fakeApp(),
     );
     assert.equal(device.sent.length, 5);
     device.sent.forEach((message) => {
@@ -127,7 +216,7 @@ describe('ask command', () => {
       { data: 'ask something', type: 'broadcast', channel: 1 },
       { communications: { anthropic_api_key: 'key' } },
       device,
-      { error: () => {} },
+      fakeApp(),
     );
     assert.equal(device.sent.length, 1);
     assert.match(device.sent[0].text, /unable to reach claude/i);
